@@ -98,9 +98,9 @@ python somark_parser.py -f <文件路径> -o <输出目录>
 
 如果用户没有 API Key，根据用户语言回复获取方式：
 
-- 中文用户：请访问 https://somark.tech/login 登录或注册后，在「API 工作台」→「APIKey」页面获取 API Key（格式：sk-******），获取后发给我。
+- 中文用户：请访问 https://somark.tech/login 登录或注册后，在「API 工作台」→「APIKey」页面获取 API Key（格式：sk-******）。获取后**请勿发送到对话窗口**，直接在终端设置环境变量即可（见第三步）。
 
-- English Users: Please visit https://somark.tech/login After logging in or registering, get your API Key from "API Workbench" → "APIKey" page (format: sk-******), then send it to me.
+- English Users: Please visit https://somark.tech/login — after logging in or registering, get your API Key from "API Workbench" → "APIKey" page (format: sk-******). **Do NOT send the key here** — set it as an environment variable in your terminal instead (see step 3).
 
 **第三步：配置 API Key**
 
