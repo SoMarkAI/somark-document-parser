@@ -18,19 +18,17 @@ def parse_args():
     parser.add_argument('-f', '--file', type=str, help='要解析的文件路径')
     parser.add_argument('-d', '--dir', type=str, help='要解析的文件夹路径')
     parser.add_argument('-o', '--output', type=str, default='.', help='输出目录 (默认: 当前目录)')
-    parser.add_argument('--api-key', type=str, help='API Key (也可通过环境变量 SOMARK_API_KEY 设置)')
     return parser.parse_args()
 
-# 从参数或环境变量获取 API Key
+# 从环境变量获取 API Key（禁止通过命令行参数传入，避免暴露在进程列表中）
 args = parse_args()
-api_key = args.api_key or os.environ.get('SOMARK_API_KEY', '')
+api_key = os.environ.get('SOMARK_API_KEY', '')
 
 if not api_key:
-    print("错误：请设置环境变量 SOMARK_API_KEY 或通过 --api-key 参数传入")
-    print("用法: python somark_parser.py -f /path/to/file.pdf")
+    print("错误：请设置环境变量 SOMARK_API_KEY")
+    print("用法: export SOMARK_API_KEY=your_key_here")
+    print("     python somark_parser.py -f /path/to/file.pdf")
     exit(1)
-
-print(f"使用 API Key: {api_key[:10]}...")
 
 # 确定输入文件
 input_path = args.file or args.dir
@@ -93,7 +91,16 @@ async def check_task_status(session, api_key, task_id, max_retries=1000, retry_i
             }
             async with session.post(check_url, data=data) as response:
                 if response.status == 200:
-                    data = (await response.json()).get('data', {})
+                    resp = await response.json()
+                    if not isinstance(resp, dict) or 'data' not in resp:
+                        print(f"  Unexpected response structure, skipping")
+                        await asyncio.sleep(retry_interval)
+                        continue
+                    data = resp['data']
+                    if not isinstance(data, dict):
+                        print(f"  Invalid data field in response, skipping")
+                        await asyncio.sleep(retry_interval)
+                        continue
                     print(f"  Check attempt {attempt + 1}: {str(data)[:100]}")
                     if 'status' in data and data['status'] == 'FAILED':
                         print(f"  Task failed: {str(data)[:200]}")

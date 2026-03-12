@@ -31,6 +31,11 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/settings.local.json
+.claude/skills/
+
+# Skills runtime / generated
+.agents/
+skills-lock.json
 
 # Skill output (parsed results)
 output/
