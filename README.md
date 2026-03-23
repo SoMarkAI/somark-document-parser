@@ -1,6 +1,6 @@
 # somark-document-parser
 
-> Parse PDFs, images, Word, and PowerPoint files into clean Markdown or JSON using [SoMark](https://somark.ai) — the document intelligence API built for AI workflows.
+> Official [SoMark](https://somark.ai) skills collection for document parsing, image OCR, and intelligent extraction — built for AI agent workflows.
 
 ## Install
 
@@ -12,9 +12,20 @@ Works with Claude Code, Cursor, Cline, OpenCode, and [40+ other agents](https://
 
 ---
 
+## Skills
+
+| Skill | Description |
+|-------|-------------|
+| **somark-document-parser** | Parse PDFs, Word, PowerPoint, and images into structured Markdown or JSON |
+| **image-parser** | Extract text with bounding-box coordinates from images (OCR + precise location) |
+
+---
+
 ## What it does
 
 When you share a document with your AI agent, SoMark parses it into structured Markdown or JSON that the agent can actually reason over — not just OCR'd text, but proper headings, tables, formulas, and layout.
+
+The image-parser skill goes further: it returns every text block with its exact pixel coordinates on the original image, enabling field extraction, region location, and document automation.
 
 **Supported formats:**
 
@@ -30,6 +41,8 @@ When you share a document with your AI agent, SoMark parses it into structured M
 - "Summarize the paper I just uploaded"
 - "Convert this document to Markdown"
 - "What does this image say?"
+- "Extract all text with bounding boxes from this image"
+- "Find the invoice amount and its position on the page"
 
 ---
 

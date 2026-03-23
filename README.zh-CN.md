@@ -1,6 +1,6 @@
 # somark-document-parser
 
-> 使用 [SoMark](https://somark.ai) 将 PDF、图片、Word、PowerPoint 解析为干净的 Markdown 或 JSON —— 专为 AI 工作流设计的文档智能 API。
+> [SoMark](https://somark.ai) 官方 Skills 合集，涵盖文档解析、图片 OCR 及智能提取 —— 专为 AI Agent 工作流设计。
 
 ## 安装
 
@@ -12,9 +12,20 @@ npx skills add https://github.com/SoMarkAI/somark-document-parser
 
 ---
 
+## Skills 列表
+
+| Skill | 说明 |
+|-------|------|
+| **somark-document-parser** | 将 PDF、Word、PowerPoint、图片解析为结构化 Markdown 或 JSON |
+| **image-parser** | 从图片中提取文本及精确坐标（OCR + 位置感知） |
+
+---
+
 ## 功能说明
 
 当你把文档交给 AI Agent 时，SoMark 会将文档解析为结构化 Markdown 或 JSON，Agent 能基于结构进行准确理解，而不只是处理 OCR 后的纯文本。
+
+image-parser skill 进一步提供每个文本块在原图上的像素坐标，支持字段提取、区域定位和文档自动化等场景。
 
 **支持格式：**
 
@@ -30,6 +41,8 @@ npx skills add https://github.com/SoMarkAI/somark-document-parser
 - “总结我刚上传的论文”
 - “把这个文档转成 Markdown”
 - “这张图片里写了什么？”
+- “提取这张图片中所有文字及坐标”
+- “找出发票上的金额以及它在图片中的位置”
 
 ---
 
