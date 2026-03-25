@@ -26,6 +26,7 @@ npx skills add https://github.com/SoMarkAI/skills
 | **tender-analyzer** | 从招标采购文件中提取资质要求、评分标准、关键截止日期和投标清单 |
 | **paper-digest** | 深度解析学术论文，生成涵盖方法、结果、贡献的结构化研究卡片 |
 | **financial-report-analyzer** | 从年报和财报中提取核心财务指标、风险信号和管理层表述 |
+| **pitch-screener** | 以 VC/天使投资人视角筛选创业 Pitch Deck —— 解析演示文稿、联网背调关键信息，生成见面前投资备忘录 |
 
 ---
 

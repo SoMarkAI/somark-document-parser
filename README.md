@@ -26,6 +26,7 @@ Works with Claude Code, Cursor, Cline, OpenCode, and [40+ other agents](https://
 | **tender-analyzer** | Extract qualification requirements, scoring criteria, deadlines, and submission checklists from procurement documents |
 | **paper-digest** | Deeply analyze academic papers into structured research cards covering methods, results, and contributions |
 | **financial-report-analyzer** | Extract financial metrics, risk signals, and management commentary from annual reports and earnings releases |
+| **pitch-screener** | Screen startup pitch decks from a VC/angel investor perspective — parses the deck, runs background research via web search, and produces a pre-meeting investment memo |
 
 ---
 
