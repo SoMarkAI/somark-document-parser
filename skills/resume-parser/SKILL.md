@@ -1,7 +1,6 @@
 ---
 name: resume-parser
-description:
-  Parse resumes and CVs (PDF, Word, images) into structured JSON profiles using SoMark for accurate document parsing. Extracts name, contact info, work experience, education, skills, and certifications. Ideal for HR workflows, candidate review, and talent intelligence. Requires SoMark API Key (SOMARK_API_KEY).
+description: Parse resumes and CVs (PDF, Word, images) into structured JSON profiles using SoMark for accurate document parsing. Extracts name, contact info, work experience, education, skills, and certifications. Ideal for HR workflows, candidate review, and talent intelligence. Requires SoMark API Key (SOMARK_API_KEY).
 metadata: {"openclaw": {"emoji": "👤", "requires": {"env": ["SOMARK_API_KEY"]}, "primaryEnv": "SOMARK_API_KEY"}}
 ---
 

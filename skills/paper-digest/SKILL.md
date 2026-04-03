@@ -1,7 +1,6 @@
 ---
 name: paper-digest
-description:
-  Parse and deeply analyze academic papers (PDF, images) into structured research cards covering problem, methods, datasets, results, limitations, and contributions. Uses SoMark to accurately recover two-column layouts, formulas, tables, and figures before AI extraction. Ideal for literature review, research tracking, and knowledge base building. Requires SoMark API Key (SOMARK_API_KEY).
+description: Parse and deeply analyze academic papers (PDF, images) into structured research cards covering problem, methods, datasets, results, limitations, and contributions. Uses SoMark to accurately recover two-column layouts, formulas, tables, and figures before AI extraction. Ideal for literature review, research tracking, and knowledge base building. Requires SoMark API Key (SOMARK_API_KEY).
 metadata: {"openclaw": {"emoji": "🔬", "requires": {"env": ["SOMARK_API_KEY"]}, "primaryEnv": "SOMARK_API_KEY"}}
 ---
 

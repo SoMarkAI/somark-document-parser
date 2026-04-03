@@ -1,7 +1,6 @@
 ---
 name: tender-analyzer
-description:
-  Analyze tender and procurement documents (PDF, Word, images) to extract qualification requirements, scoring criteria, key deadlines, prohibited clauses, and submission checklists. Uses SoMark for accurate parsing of complex government and enterprise procurement documents. Requires SoMark API Key (SOMARK_API_KEY).
+description: Analyze tender and procurement documents (PDF, Word, images) to extract qualification requirements, scoring criteria, key deadlines, prohibited clauses, and submission checklists. Uses SoMark for accurate parsing of complex government and enterprise procurement documents. Requires SoMark API Key (SOMARK_API_KEY).
 metadata: {"openclaw": {"emoji": "📋", "requires": {"env": ["SOMARK_API_KEY"]}, "primaryEnv": "SOMARK_API_KEY"}}
 ---
 

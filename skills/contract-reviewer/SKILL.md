@@ -1,7 +1,6 @@
 ---
 name: contract-reviewer
-description:
-  Review contracts and legal agreements (PDF, Word, images) for risks, unfair clauses, missing provisions, and key obligations using SoMark for accurate document parsing. Provides structured risk analysis with severity ratings. Requires SoMark API Key (SOMARK_API_KEY).
+description: Review contracts and legal agreements (PDF, Word, images) for risks, unfair clauses, missing provisions, and key obligations using SoMark for accurate document parsing. Provides structured risk analysis with severity ratings. Requires SoMark API Key (SOMARK_API_KEY).
 metadata: {"openclaw": {"emoji": "⚖️", "requires": {"env": ["SOMARK_API_KEY"]}, "primaryEnv": "SOMARK_API_KEY"}}
 ---
 

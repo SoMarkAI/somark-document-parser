@@ -1,7 +1,6 @@
 ---
 name: image-parser
-description:
-  Parse text and coordinates from images with SoMark (character/word/line positions on original image). Ideal for OCR-first image understanding where location matters. Requires SoMark API Key (SOMARK_API_KEY).
+description: Parse text and coordinates from images with SoMark (character/word/line positions on original image). Ideal for OCR-first image understanding where location matters. Requires SoMark API Key (SOMARK_API_KEY).
 metadata: {"openclaw": {"emoji": "🧭", "requires": {"env": ["SOMARK_API_KEY"]}, "primaryEnv": "SOMARK_API_KEY"}}
 ---
 

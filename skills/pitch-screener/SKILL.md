@@ -1,7 +1,6 @@
 ---
 name: pitch-screener
-description:
-  Screen startup pitch decks (PDF, PowerPoint, images) from a VC/angel investor perspective. Parses the deck with SoMark to recover slide structure accurately, then runs web searches to independently verify key claims, then produces a concise pre-meeting investment memo covering founders, market, product, traction, and business model. Outputs an investment signal with clear reasoning. Requires SoMark API Key (SOMARK_API_KEY).
+description: Screen startup pitch decks (PDF, PowerPoint, images) from a VC/angel investor perspective. Parses the deck with SoMark to recover slide structure accurately, then runs web searches to independently verify key claims, then produces a concise pre-meeting investment memo covering founders, market, product, traction, and business model. Outputs an investment signal with clear reasoning. Requires SoMark API Key (SOMARK_API_KEY).
 metadata: {"openclaw": {"emoji": "🔭", "requires": {"env": ["SOMARK_API_KEY"]}, "primaryEnv": "SOMARK_API_KEY"}}
 ---
 

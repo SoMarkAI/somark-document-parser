@@ -1,7 +1,6 @@
 ---
 name: financial-report-analyzer
-description:
-  Analyze financial reports and research notes (PDF, Word, images) to extract key financial metrics, profitability trends, risk signals, and management commentary. Uses SoMark to accurately parse complex financial tables, multi-column layouts, and charts before AI analysis. Ideal for earnings analysis, equity research, and investment due diligence. Requires SoMark API Key (SOMARK_API_KEY).
+description: Analyze financial reports and research notes (PDF, Word, images) to extract key financial metrics, profitability trends, risk signals, and management commentary. Uses SoMark to accurately parse complex financial tables, multi-column layouts, and charts before AI analysis. Ideal for earnings analysis, equity research, and investment due diligence. Requires SoMark API Key (SOMARK_API_KEY).
 metadata: {"openclaw": {"emoji": "📊", "requires": {"env": ["SOMARK_API_KEY"]}, "primaryEnv": "SOMARK_API_KEY"}}
 ---
 

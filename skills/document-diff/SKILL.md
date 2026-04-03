@@ -1,7 +1,6 @@
 ---
 name: document-diff
-description:
-  Compare two documents (PDF, Word, images, PPT) and generate a structured diff report highlighting what changed, what was added, and what was removed. Uses SoMark to parse both documents first for accurate structure-aware comparison. Requires SoMark API Key (SOMARK_API_KEY).
+description: Compare two documents (PDF, Word, images, PPT) and generate a structured diff report highlighting what changed, what was added, and what was removed. Uses SoMark to parse both documents first for accurate structure-aware comparison. Requires SoMark API Key (SOMARK_API_KEY).
 metadata: {"openclaw": {"emoji": "🔍", "requires": {"env": ["SOMARK_API_KEY"]}, "primaryEnv": "SOMARK_API_KEY"}}
 ---
 
