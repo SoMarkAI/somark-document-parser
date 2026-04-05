@@ -1,0 +1,51 @@
+name: Publish Skills to ClawHub
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'skills/**'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install ClawHub CLI
+        run: npm install -g clawhub
+
+      - name: Login
+        run: clawhub login --token "${{ secrets.CLAWHUB_TOKEN }}"
+
+      - name: Detect changed skills and publish
+        run: |
+          changed_dirs=$(git diff --name-only HEAD~1 HEAD -- skills/ | cut -d'/' -f1-2 | sort -u)
+
+          if [ -z "$changed_dirs" ]; then
+            echo "No skill changes detected"
+            exit 0
+          fi
+
+          for dir in $changed_dirs; do
+            if [ ! -f "$dir/_meta.json" ] || [ ! -f "$dir/SKILL.md" ]; then
+              echo "⏭️ Skip $dir (missing _meta.json or SKILL.md)"
+              continue
+            fi
+
+            slug=$(python3 -c "import json; print(json.load(open('$dir/_meta.json'))['slug'])")
+            version=$(python3 -c "import json; print(json.load(open('$dir/_meta.json'))['version'])")
+
+            echo "📦 Publishing $slug@$version from $dir"
+            if clawhub publish "$dir" --slug "$slug" --version "$version" --tags latest --changelog "Auto-publish from GitHub Actions"; then
+              echo "✅ $slug@$version published"
+            else
+              echo "⚠️ $slug@$version failed (slug taken or version exists), skipping"
+            fi
+          done
