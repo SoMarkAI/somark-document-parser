@@ -109,7 +109,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-formats",
         type=parse_json_list,
-        required=True,
+        default=["markdown", "json"],
         help='输出格式，传 JSON 数组，例如 \'["markdown", "json"]\'',
     )
     parser.add_argument(

@@ -56,24 +56,30 @@ python financial_report_analyzer.py \
 
 **Supported formats:** `.pdf` `.png` `.jpg` `.jpeg` `.bmp` `.tiff` `.webp` `.heic` `.heif` `.gif` `.doc` `.docx`
 
-### Parser settings
+### Optional parser settings
 
-#### `--output-formats` (Required)
+#### `--output-formats` (Optional)
 
 This argument controls which parser outputs should be requested and saved.
+
+If omitted, the default value is:
+
+```json
+["markdown", "json"]
+```
 
 Supported values:
 
 | Value        | Description                                 |
 | ------------ | ------------------------------------------- |
 | `markdown`   | Save the parsed report as a Markdown file   |
-| `json`       | Save the raw SoMark JSON output             |
-| `somarkdown` | Save the parsed report as a SoMarkDown file |
+| `json`       | Save the parsed report as a JSON output          |
+| `somarkdown` | Save the parsed report as a SoMarkDown text view |
 
 Example:
 
 ```bash
---output-formats '["markdown", "json"]'
+--output-formats '["markdown", "json", "somarkdown"]'
 ```
 
 #### `--element-formats` (Optional)
