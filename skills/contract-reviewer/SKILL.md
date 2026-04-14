@@ -56,19 +56,19 @@ python contract_reviewer.py \
 
 **Supported formats:** `.pdf` `.png` `.jpg` `.jpeg` `.bmp` `.tiff` `.webp` `.heic` `.heif` `.gif` `.doc` `.docx`
 
-### Parser settings
+### Optional parser settings
 
-#### `--output-formats` (Required)
+#### `--output-formats` (Optional)
 
-This argument is required in the current script. Pass a JSON array of one or more output formats.
+This argument is optional in the current script. Pass a JSON array of one or more output formats.
 
 Supported values:
 
 | Value        | Description                                   |
 | ------------ | --------------------------------------------- |
 | `markdown`   | Save the parsed contract as a Markdown file   |
-| `json`       | Save the raw SoMark JSON output               |
-| `somarkdown` | Save the parsed contract as a SoMarkDown file |
+| `json`       | Save the parsed contract as a JSON output          |
+| `somarkdown` | Save the parsed contract as a SoMarkDown text view |
 
 Example:
 
