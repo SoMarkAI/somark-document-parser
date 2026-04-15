@@ -1,213 +1,423 @@
-import aiohttp
+import argparse
 import asyncio
-from pathlib import Path
 import json
 import os
-import argparse
 import time
+from pathlib import Path
+from typing import Any
 
-"""
-使用方法：
-1. 设置环境变量 SOMARK_API_KEY
-2. 通过命令行参数指定要解析的文件或文件夹
-3. 运行脚本
-"""
+import aiohttp
 
-def parse_args():
-    parser = argparse.ArgumentParser(description='SoMark 文档解析工具')
-    parser.add_argument('-f', '--file', type=str, help='要解析的文件路径')
-    parser.add_argument('-d', '--dir', type=str, help='要解析的文件夹路径')
-    parser.add_argument('-o', '--output', type=str, default='.', help='输出目录 (默认: 当前目录)')
+# SOMARK_BASE = "https://somark.tech/api/v1"
+SOMARK_BASE = "https://somark-sit.soulcode.cn/api/v2"
+ASYNC_URL = f"{SOMARK_BASE}/parse/async"
+CHECK_URL = f"{SOMARK_BASE}/parse/async_check"
+
+SUPPORTED_FORMATS = {
+    ".pdf",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".bmp",
+    ".tiff",
+    ".jp2",
+    ".dib",
+    ".ppm",
+    ".pgm",
+    ".pbm",
+    ".gif",
+    ".heic",
+    ".heif",
+    ".webp",
+    ".xpm",
+    ".tga",
+    ".dds",
+    ".xbm",
+    ".doc",
+    ".docx",
+    ".ppt",
+    ".pptx",
+}
+
+SUPPORTED_OUTPUT_FORMATS = {"markdown", "json", "somarkdown"}
+
+SUPPORTED_ELEMENT_FORMATS = {
+    "image": ["url", "base64", "none"],
+    "formula": ["latex", "mathml", "ascii"],
+    "table": ["html", "image", "markdown"],
+    "cs": ["image"],
+}
+
+DEFAULT_ELEMENT_FORMATS = {
+    "image": "url",
+    "formula": "latex",
+    "table": "html",
+    "cs": "image",
+}
+
+DEFAULT_FEATURE_CONFIGS = {
+    "enable_text_cross_page": False,
+    "enable_table_cross_page": False,
+    "enable_title_level_recognition": False,
+    "enable_inline_image": True,
+    "enable_table_image": True,
+    "enable_image_understanding": True,
+    "keep_header_footer": False,
+}
+
+
+def parse_json_list(value: str) -> list[str]:
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise argparse.ArgumentTypeError(f"数组参数必须是合法 JSON: {exc}") from exc
+
+    if not isinstance(parsed, list):
+        raise argparse.ArgumentTypeError(
+            '数组参数必须是 JSON 数组，例如 \'["markdown", "json"]\''
+        )
+
+    normalized: list[str] = []
+    for item in parsed:
+        if not isinstance(item, str) or not item.strip():
+            raise argparse.ArgumentTypeError("数组参数中的每一项都必须是非空字符串")
+        normalized.append(item.strip())
+
+    return normalized
+
+
+def parse_json_dict(value: str) -> dict[str, Any]:
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise argparse.ArgumentTypeError(f"字典参数必须是合法 JSON: {exc}") from exc
+
+    if not isinstance(parsed, dict):
+        raise argparse.ArgumentTypeError(
+            '字典参数必须是 JSON 对象，例如 \'{"image": "url"}\''
+        )
+
+    for key, item in parsed.items():
+        if isinstance(item, str) and not item.strip():
+            raise argparse.ArgumentTypeError(f"字典参数中的字段 '{key}' 不能为空字符串")
+        if isinstance(item, str):
+            parsed[key] = item.strip()
+
+    return parsed
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="SoMark 文档解析工具")
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument("-f", "--file", type=str, help="要解析的文件路径")
+    input_group.add_argument("-d", "--dir", type=str, help="要解析的文件夹路径")
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        default=".",
+        help="输出目录（默认：当前目录）",
+    )
+    parser.add_argument(
+        "--output-formats",
+        type=parse_json_list,
+        default=["markdown", "json"],
+        help='输出格式，传 JSON 数组，例如 \'["markdown", "json"]\'',
+    )
+    parser.add_argument(
+        "--element-formats",
+        type=parse_json_dict,
+        default=DEFAULT_ELEMENT_FORMATS,
+        help='元素格式，传 JSON 对象，例如 \'{"image": "url", "formula": "latex", "table": "html"}\'',
+    )
+    parser.add_argument(
+        "--feature-config",
+        type=parse_json_dict,
+        default=DEFAULT_FEATURE_CONFIGS,
+        help='功能配置，传 JSON 对象，例如 \'{"enable_inline_image": true, "enable_table_image": true}\'',
+    )
     return parser.parse_args()
 
-# 从环境变量获取 API Key（禁止通过命令行参数传入，避免暴露在进程列表中）
-args = parse_args()
-api_key = os.environ.get('SOMARK_API_KEY', '')
 
-if not api_key:
-    print("错误：请设置环境变量 SOMARK_API_KEY")
-    print("用法: export SOMARK_API_KEY=your_key_here")
-    print("     python somark_parser.py -f /path/to/file.pdf")
-    exit(1)
+def resolve_input_paths(args: argparse.Namespace) -> tuple[Path, list[Path]]:
+    input_path = Path(args.file or args.dir).resolve()
+    if not input_path.exists():
+        raise FileNotFoundError(f"路径不存在: {input_path}")
 
-# 确定输入文件
-input_path = args.file or args.dir
+    if input_path.is_file():
+        if input_path.suffix.lower() not in SUPPORTED_FORMATS:
+            raise ValueError(f"不支持的文件格式: {input_path.suffix}")
+        return input_path, [input_path]
 
-if not input_path:
-    print("错误：请指定文件或文件夹路径")
-    print("用法: python somark_parser.py -f /path/to/file.pdf")
-    print("   或: python somark_parser.py -d /path/to/folder")
-    exit(1)
-
-input_file_path = Path(input_path).resolve()
-
-if not input_file_path.exists():
-    print(f"错误：路径不存在: {input_file_path}")
-    exit(1)
-
-# 确定输出目录
-output_dir = Path(args.output).resolve()
-output_dir.mkdir(parents=True, exist_ok=True)
-
-base_url = "https://somark.tech/api/v1"
-async_url = f"{base_url}/extract/async"
-check_url = f"{base_url}/extract/async_check"
-
-SAVE_FILE = True
-
-if input_file_path.is_file():
-    files_list = [input_file_path]
-else:
-    supported_formats = {
-        # PDF
-        '.pdf',
-        # 图片格式
-        '.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.jp2', '.dib',
-        '.ppm', '.pgm', '.pbm', '.gif', '.heic', '.heif', '.webp', '.xpm',
-        '.tga', '.dds', '.xbm',
-        # Office文件格式
-        '.doc', '.docx', '.ppt', '.pptx',
-    }
     files_list = sorted(
-        [p for p in input_file_path.iterdir() if p.suffix.lower() in supported_formats],
-        key=lambda p: p.name
+        [
+            path
+            for path in input_path.iterdir()
+            if path.is_file() and path.suffix.lower() in SUPPORTED_FORMATS
+        ],
+        key=lambda path: path.name,
+    )
+    if not files_list:
+        raise ValueError(f"未找到支持的文件: {input_path}")
+    return input_path, files_list
+
+
+def normalize_output_formats(output_formats: list[str]) -> list[str]:
+    normalized = [output_format.strip() for output_format in output_formats]
+    for output_format in normalized:
+        if output_format not in SUPPORTED_OUTPUT_FORMATS:
+            supported = ", ".join(sorted(SUPPORTED_OUTPUT_FORMATS))
+            raise ValueError(f"不支持的输出格式: {output_format}，仅支持: {supported}")
+    return normalized
+
+
+def normalize_element_formats(element_formats: dict[str, Any]) -> dict[str, str]:
+    normalized = DEFAULT_ELEMENT_FORMATS.copy()
+    normalized.update(element_formats)
+
+    for key, value in normalized.items():
+        if key not in SUPPORTED_ELEMENT_FORMATS:
+            supported = ", ".join(SUPPORTED_ELEMENT_FORMATS.keys())
+            raise ValueError(f"不支持的元素格式: {key}，仅支持: {supported}")
+        if not isinstance(value, str):
+            raise ValueError(
+                f"元素格式 {key} 的值必须是字符串，当前值: {value}, 类型: {type(value)}"
+            )
+        if value not in SUPPORTED_ELEMENT_FORMATS[key]:
+            supported = ", ".join(SUPPORTED_ELEMENT_FORMATS[key])
+            raise ValueError(f"元素格式 {key} 不支持值: {value}，仅支持: {supported}")
+
+    return normalized
+
+
+def normalize_feature_config(feature_config: dict[str, Any]) -> dict[str, bool]:
+    normalized = DEFAULT_FEATURE_CONFIGS.copy()
+    normalized.update(feature_config)
+
+    for key, value in normalized.items():
+        if key not in DEFAULT_FEATURE_CONFIGS:
+            supported = ", ".join(DEFAULT_FEATURE_CONFIGS.keys())
+            raise ValueError(f"不支持的功能配置: {key}，仅支持: {supported}")
+        if not isinstance(value, bool):
+            raise ValueError(
+                f"功能配置 {key} 的值必须是布尔值，当前值: {value}, 类型: {type(value)}"
+            )
+
+    return normalized
+
+
+async def submit_task(
+    session: aiohttp.ClientSession,
+    file_path: Path,
+    api_key: str,
+    output_formats: list[str],
+    element_formats: dict[str, str],
+    feature_config: dict[str, bool],
+) -> str:
+    data = aiohttp.FormData()
+    data.add_field("api_key", api_key)
+    data.add_field("file", file_path.read_bytes(), filename=file_path.name)
+    for output_format in output_formats:
+        data.add_field("output_formats", output_format)
+    data.add_field("element_formats", json.dumps(element_formats, ensure_ascii=False))
+    data.add_field("feature_config", json.dumps(feature_config, ensure_ascii=False))
+
+    async with session.post(ASYNC_URL, data=data) as response:
+        if response.status != 200:
+            error_text = await response.text()
+            raise RuntimeError(f"提交任务失败 [{response.status}]: {error_text}")
+        body = await response.json()
+
+    task_id = (body.get("data") or {}).get("task_id")
+    if not task_id:
+        raise RuntimeError(f"响应中缺少 task_id: {body}")
+    return task_id
+
+
+async def poll_task(
+    session: aiohttp.ClientSession,
+    task_id: str,
+    api_key: str,
+    max_retries: int = 1000,
+    interval: int = 2,
+) -> dict[str, Any]:
+    for _ in range(max_retries):
+        await asyncio.sleep(interval)
+        async with session.post(
+            CHECK_URL, data={"api_key": api_key, "task_id": task_id}
+        ) as response:
+            if response.status != 200:
+                continue
+            body = await response.json()
+
+        data = body.get("data") or {}
+        status = data.get("status")
+        if status == "FAILED":
+            raise RuntimeError(f"SoMark 任务失败: {data}")
+        if status == "SUCCESS":
+            result = data.get("result") or {}
+            return result.get("outputs") or result
+
+    raise RuntimeError(f"任务轮询超时: task_id={task_id}")
+
+
+def extract_metadata(outputs: dict[str, Any]) -> tuple[int, int]:
+    json_data = outputs.get("json")
+    if not isinstance(json_data, dict):
+        return 0, 0
+
+    metadata = json_data.get("metadata")
+    if not isinstance(metadata, dict):
+        return 0, 0
+
+    page_count = metadata.get("page_count", 0)
+    token_count = metadata.get("token_count", 0)
+    return (
+        page_count if isinstance(page_count, int) else 0,
+        token_count if isinstance(token_count, int) else 0,
     )
 
-if not files_list:
-    print(f"未找到支持的文件: {input_file_path}")
-    exit(1)
 
-print(f"找到 {len(files_list)} 个文件待处理")
-print(f"输出目录: {output_dir}")
+def save_outputs(
+    output_dir: Path, file_path: Path, outputs: dict[str, Any]
+) -> dict[str, Any]:
+    md_content = outputs.get("markdown", "")
+    json_content = outputs.get("json", {})
+    somarkdown_content = outputs.get("somarkdown", "")
 
+    md_path = output_dir / f"{file_path.stem}.md"
+    json_path = output_dir / f"{file_path.stem}.json"
+    somarkdown_path = output_dir / f"{file_path.stem}-smd.md"
 
-async def check_task_status(session, api_key, task_id, max_retries=1000, retry_interval=2):
-    """检查异步任务状态"""
-    for attempt in range(max_retries):
-        try:
-            data = {
-                'api_key': api_key,
-                'task_id': task_id
-            }
-            async with session.post(check_url, data=data) as response:
-                if response.status == 200:
-                    resp = await response.json()
-                    if not isinstance(resp, dict) or 'data' not in resp:
-                        print(f"  Unexpected response structure, skipping")
-                        await asyncio.sleep(retry_interval)
-                        continue
-                    data = resp['data']
-                    if not isinstance(data, dict):
-                        print(f"  Invalid data field in response, skipping")
-                        await asyncio.sleep(retry_interval)
-                        continue
-                    print(f"  Check attempt {attempt + 1}: {str(data)[:100]}")
-                    if 'status' in data and data['status'] == 'FAILED':
-                        print(f"  Task failed: {str(data)[:200]}")
-                        return None
-                    if 'status' in data and data['status'] == 'SUCCESS':
-                        result = data.get('result', {})
-                        if 'outputs' in result:
-                            return result['outputs']
-                        else:
-                            return result
-                else:
-                    print(f"  Check failed with status {response.status}")
-        except Exception as e:
-            print(f"  Check request failed: {e}")
+    if md_content:
+        md_path.write_text(md_content, encoding="utf-8")
+        print(f"  Markdown 已保存: {md_path}")
 
-        await asyncio.sleep(retry_interval)
+    if json_content:
+        json_path.write_text(
+            json.dumps(json_content, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        print(f"  JSON 已保存: {json_path}")
 
-    print(f"  Task check timeout after {max_retries} attempts")
-    return None
+    if somarkdown_content:
+        somarkdown_path.write_text(somarkdown_content, encoding="utf-8")
+        print(f"  SoMarkdown 已保存: {somarkdown_path}")
+
+    page_count, token_count = extract_metadata(outputs)
+    return {
+        "status": "success",
+        "file": str(file_path),
+        "markdown": str(md_path) if md_content else None,
+        "json": str(json_path) if json_content else None,
+        "somarkdown": str(somarkdown_path) if somarkdown_content else None,
+        "page_count": page_count,
+        "token_count": token_count,
+    }
 
 
-async def process_file_async(session, file_path):
-    """异步处理单个文件"""
-    print(f"\n处理中: {file_path.name}")
+async def process_file_async(
+    session: aiohttp.ClientSession,
+    file_path: Path,
+    api_key: str,
+    output_dir: Path,
+    output_formats: list[str],
+    element_formats: dict[str, str],
+    feature_config: dict[str, bool],
+) -> dict[str, Any]:
+    print(f"\n开始解析: {file_path.name}")
     start_time = time.time()
-    page_count = 0
-    token_count = 0
 
     try:
-        # 准备文件数据
-        data = aiohttp.FormData()
-        data.add_field('output_formats', 'markdown')
-        data.add_field('output_formats', 'json')
-        data.add_field('api_key', api_key)
+        print("  提交解析任务...")
+        task_id = await submit_task(
+            session,
+            file_path,
+            api_key,
+            output_formats,
+            element_formats,
+            feature_config,
+        )
+        print(f"  等待结果 (task_id={task_id})...")
+        outputs = await poll_task(session, task_id, api_key)
 
-        # 读取文件内容到内存中
-        with open(file_path, 'rb') as f:
-            file_content = f.read()
+        elapsed = round(time.time() - start_time, 2)
+        entry = save_outputs(output_dir, file_path, outputs)
+        entry["elapsed_seconds"] = elapsed
 
-        # 添加文件到FormData
-        data.add_field('file', file_content, filename=file_path.name)
-
-        # 发送异步请求
-        async with session.post(async_url, data=data) as response:
-            print(f"  Status Code: {response.status}")
-            if response.status != 200:
-                error_text = await response.text()
-                print(f"  Error response: {error_text}")
-                return
-
-            resp_json = await response.json()
-            print(f"  Initial response: {resp_json}")
-            resp_json = resp_json.get('data', {})
-
-            # 检查是否有task_id
-            if 'task_id' not in resp_json:
-                print(f"  No task_id in response: {resp_json}")
-                return
-
-            task_id = resp_json['task_id']
-            print(f"  Got task_id: {task_id}")
-
-            # 轮询检查任务状态
-            result = await check_task_status(session, api_key, task_id)
-
-            # 计算耗时
-            elapsed_time = time.time() - start_time
-
-            # 从结果中提取页数和 token 数量
-            if result:
-                if 'json' in result and isinstance(result['json'], dict):
-                    # 尝试从 json 结果中提取元数据
-                    json_data = result['json']
-                    if 'metadata' in json_data:
-                        page_count = json_data['metadata'].get('page_count', 0)
-                        token_count = json_data['metadata'].get('token_count', 0)
-
-            if result and SAVE_FILE:
-                base_name = file_path.stem
-                md_path = output_dir / f"{base_name}.md"
-                json_path = output_dir / f"{base_name}.json"
-
-                if 'markdown' in result:
-                    md_path.write_text(result['markdown'], encoding='utf-8')
-                    print(f"  Markdown 已保存: {md_path}")
-                if 'json' in result:
-                    json_path.write_text(json.dumps(
-                        result['json'], ensure_ascii=False, indent=2), encoding='utf-8')
-                    print(f"  JSON 已保存: {json_path}")
-
-                print(f"\n=== 解析完成统计 ===")
-                print(f"  页数: {page_count}")
-                print(f"  耗时: {elapsed_time:.2f} 秒")
-                print(f"===================\n")
-            elif result:
-                print(f"  完成: {file_path.name}")
-            else:
-                print(f"  失败或超时: {file_path.name}")
-
-    except Exception as e:
-        print(f"  请求失败: {e}")
+        print(f"  页数: {entry['page_count']}")
+        print(f"  Token 数: {entry['token_count']}")
+        print(f"  耗时: {elapsed} 秒")
+        return entry
+    except Exception as exc:
+        elapsed = round(time.time() - start_time, 2)
+        print(f"  解析失败: {exc}")
+        return {
+            "status": "failed",
+            "file": str(file_path),
+            "error": str(exc),
+            "elapsed_seconds": elapsed,
+        }
 
 
-async def main():
+async def main() -> None:
+    args = parse_args()
+    api_key = os.environ.get("SOMARK_API_KEY", "")
+    if not api_key:
+        print("错误：请设置环境变量 SOMARK_API_KEY")
+        print("用法: export SOMARK_API_KEY=your_key_here")
+        raise SystemExit(1)
+
+    try:
+        input_path, files_list = resolve_input_paths(args)
+        output_formats = normalize_output_formats(args.output_formats)
+        element_formats = normalize_element_formats(args.element_formats)
+        feature_config = normalize_feature_config(args.feature_config)
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"错误：{exc}")
+        raise SystemExit(1) from exc
+
+    output_dir = Path(args.output).resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"找到 {len(files_list)} 个文件待处理")
+    print(f"输出目录: {output_dir}")
+
+    results: list[dict[str, Any]] = []
     async with aiohttp.ClientSession() as session:
         for file_path in files_list:
-            await process_file_async(session, file_path)
+            entry = await process_file_async(
+                session,
+                file_path,
+                api_key,
+                output_dir,
+                output_formats,
+                element_formats,
+                feature_config,
+            )
+            results.append(entry)
+
+    index = {
+        "input": str(input_path),
+        "output_dir": str(output_dir),
+        "request_options": {
+            "output_formats": output_formats,
+            "element_formats": element_formats,
+            "feature_config": feature_config,
+        },
+        "results": results,
+    }
+    index_path = output_dir / "results_index.json"
+    index_path.write_text(
+        json.dumps(index, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+    success_count = sum(1 for entry in results if entry.get("status") == "success")
+    failed_count = len(results) - success_count
+    print(f"\n完成：成功 {success_count} 个，失败 {failed_count} 个")
+    print(f"结果索引：{index_path}")
+
+    if failed_count:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
