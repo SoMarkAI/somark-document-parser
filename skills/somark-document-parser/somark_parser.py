@@ -8,8 +8,7 @@ from typing import Any
 
 import aiohttp
 
-# SOMARK_BASE = "https://somark.tech/api/v1"
-SOMARK_BASE = "https://somark-sit.soulcode.cn/api/v2"
+SOMARK_BASE = "https://somark.tech/api/v1"
 ASYNC_URL = f"{SOMARK_BASE}/parse/async"
 CHECK_URL = f"{SOMARK_BASE}/parse/async_check"
 
