@@ -62,6 +62,12 @@ python contract_reviewer.py \
 
 This argument is optional in the current script. Pass a JSON array of one or more output formats.
 
+If omitted, the default value is:
+
+```json
+["markdown", "json"]
+```
+
 Supported values:
 
 | Value        | Description                                   |
