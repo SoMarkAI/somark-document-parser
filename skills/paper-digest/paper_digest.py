@@ -27,7 +27,7 @@ SUPPORTED_FORMATS = {
     ".doc", ".docx",
 }
 
-SUPPORTED_OUTPUT_FORMATS = {"markdown", "json", "somarkdown"}
+SUPPORTED_OUTPUT_FORMATS = {"markdown", "json"}
 
 SUPPORTED_ELEMENT_FORMATS = {
     "image": ["url", "base64", "none"],
@@ -250,11 +250,10 @@ async def main() -> None:
 
     md_content = outputs.get("markdown", "")
     json_content = outputs.get("json", {})
-    somarkdown_content = outputs.get("somarkdown", "")
 
     md_path = output_dir / f"{file_path.stem}.md"
     json_path = output_dir / f"{file_path.stem}.json"
-    somarkdown_path = output_dir / f"{file_path.stem}-smd.md"
+
 
     if md_content:
         md_path.write_text(md_content, encoding="utf-8")
@@ -264,16 +263,13 @@ async def main() -> None:
         json_path.write_text(json.dumps(json_content, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"  JSON 已保存: {json_path}")
 
-    if somarkdown_content:
-        somarkdown_path.write_text(somarkdown_content, encoding="utf-8")
-        print(f"  SoMarkdown 已保存: {somarkdown_path}")
+ 
 
     summary = {
         "file": str(file_path),
         "output_dir": str(output_dir),
         "markdown": str(md_path) if md_content else None,
         "json": str(json_path) if json_content else None,
-        "somarkdown": str(somarkdown_path) if somarkdown_content else None,
       
         "elapsed_seconds": elapsed,
     }

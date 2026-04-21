@@ -47,7 +47,7 @@ Example requests:
 python paper_digest.py \
   -f <paper_file> \
   -o <output_dir> \
-  --output-formats '["markdown", "json", "somarkdown"]' \
+  --output-formats '["markdown", "json"]' \
   --element-formats '{"image": "url", "formula": "latex", "table": "html", "cs": "image"}' \
   --feature-config '{"enable_text_cross_page": false, "enable_table_cross_page": false, "enable_title_level_recognition": false, "enable_inline_image": true, "enable_table_image": true, "enable_image_understanding": true, "keep_header_footer": false}'
 ```
@@ -76,7 +76,6 @@ Supported keys, allowed values, and defaults:
 | ------------ | ----------------------------------------------- |
 | `markdown`   | Save the parsed paper as a Markdown file        |
 | `json`       | Save the parsed paper as a JSON output          |
-| `somarkdown` | Save the parsed paper as a SoMarkDown text view |
 
 Example:
 
@@ -153,7 +152,6 @@ Example:
 
 - `<filename>.md` — full paper in Markdown (correct reading order)
 - `<filename>.json` — raw SoMark JSON (blocks with positions)
-- `<filename>-smd.md` — SoMarkDown text view when requested and returned by the parser
 - `parse_summary.json` — metadata (file path, output paths, elapsed time)
 
 ---
@@ -296,7 +294,7 @@ export SOMARK_API_KEY=your_key_here
 - `1107` / Invalid API Key: ask the user to verify `SOMARK_API_KEY`.
 - `2000` / Invalid parameters: check file path and format.
 - Invalid JSON in `--output-formats`, `--element-formats`, or `--feature-config`: ask the user to provide valid JSON syntax.
-- Unsupported output format: tell the user the supported values are `markdown`, `json`, and `somarkdown`.
+- Unsupported output format: tell the user the supported values are `markdown`, `json`.
 - Unsupported element format: tell the user to use only supported keys and values for `image`, `formula`, `table`, and `cs`.
 - Invalid feature configuration value: tell the user that all `feature-config` values must be booleans.
 - File not found: confirm the path is correct.
