@@ -147,7 +147,7 @@ Example:
 ### Outputs
 
 - `<filename>.md` — full deck in Markdown (slide-by-slide)
-- `<filename>.json` — raw SoMark JSON (blocks with positions)
+- `<filename>.json` — JSON output (blocks with positions)
 - `parse_summary.json` — metadata (file path, output paths, elapsed time)
 
 After the script finishes, read the generated Markdown fully before proceeding.

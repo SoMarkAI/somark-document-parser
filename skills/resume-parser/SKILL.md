@@ -150,7 +150,7 @@ Example:
 ### Outputs
 
 - `<filename>.md` — full resume in Markdown (preserves structure)
-- `<filename>.json` — raw SoMark JSON (blocks with positions)
+- `<filename>.json` — JSON output (blocks with positions)
 - `parse_summary.json` — metadata (file path, output paths, elapsed time)
 
 ---

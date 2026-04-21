@@ -72,7 +72,7 @@ Supported values:
 | Value | Description |
 |------|------|
 | `markdown` | Save the parsed tender document as a Markdown file |
-| `json` | Save the raw SoMark JSON output |
+| `json` | Save the parsed tender document as a JSON output |
 
 Example:
 

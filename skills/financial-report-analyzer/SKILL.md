@@ -154,7 +154,7 @@ Example:
 ### Outputs
 
 - `<filename>.md` — full report in Markdown (preserves table structure)
-- `<filename>.json` — raw SoMark JSON (blocks with positions)
+- `<filename>.json` — JSON output (blocks with positions)
 - `parse_summary.json` — metadata (file path, elapsed time)
 
 ---
