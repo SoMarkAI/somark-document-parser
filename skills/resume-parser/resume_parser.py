@@ -53,6 +53,21 @@ DEFAULT_FEATURE_CONFIGS = {
     "keep_header_footer": False,
 }
 
+REQUEST_LOCK = asyncio.Lock()
+
+
+async def post_json(
+    session: aiohttp.ClientSession,
+    url: str,
+    **kwargs: Any,
+) -> tuple[int, Any]:
+    async with REQUEST_LOCK:
+        async with session.post(url, **kwargs) as resp:
+            status = resp.status
+            if status != 200:
+                return status, await resp.text()
+            return status, await resp.json()
+
 
 def parse_json_list(value: str) -> list[str]:
     try:
@@ -143,11 +158,9 @@ async def submit_task(
     data.add_field("element_formats", json.dumps(element_formats, ensure_ascii=False))
     data.add_field("feature_config", json.dumps(feature_config, ensure_ascii=False))
 
-    async with session.post(ASYNC_URL, data=data) as resp:
-        if resp.status != 200:
-            error_text = await resp.text()
-            raise RuntimeError(f"提交任务失败 [{resp.status}]: {error_text}")
-        body = await resp.json()
+    status, body = await post_json(session, ASYNC_URL, data=data)
+    if status != 200:
+        raise RuntimeError(f"提交任务失败 [{status}]: {body}")
 
     task_id = (body.get("data") or {}).get("task_id")
     if not task_id:
@@ -164,12 +177,11 @@ async def poll_task(
 ) -> dict:
     for _ in range(max_retries):
         await asyncio.sleep(interval)
-        async with session.post(
-            CHECK_URL, data={"api_key": api_key, "task_id": task_id}
-        ) as resp:
-            if resp.status != 200:
-                continue
-            body = await resp.json()
+        status, body = await post_json(
+            session, CHECK_URL, data={"api_key": api_key, "task_id": task_id}
+        )
+        if status != 200:
+            continue
 
         data = body.get("data") or {}
         status = data.get("status")
@@ -240,7 +252,8 @@ async def main() -> None:
     print(f"\n开始解析简历: {file_path.name}")
     start = time.time()
 
-    async with aiohttp.ClientSession() as session:
+    connector = aiohttp.TCPConnector(limit=1, limit_per_host=1)
+    async with aiohttp.ClientSession(connector=connector) as session:
         print("  提交解析任务...")
         task_id = await submit_task(
             session,
