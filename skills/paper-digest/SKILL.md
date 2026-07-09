@@ -279,7 +279,11 @@ If the user has not configured an API key:
 
 **Step 1:** Ask whether `SOMARK_API_KEY` is already set — do not ask for the key in chat.
 
-**Step 2:** Direct them to https://somark.tech/login, open "API Workbench" → "APIKey", and create a key in the format `sk-******`.
+**Step 2:** Direct them to:
+- Mainland China (中国大陆): https://somark.cn/login
+- Outside mainland China: https://somark.ai/login
+
+Open "API Workbench" → "APIKey", and create a key in the format `sk-******`.
 
 **Step 3:** Ask them to run:
 
@@ -287,7 +291,9 @@ If the user has not configured an API key:
 export SOMARK_API_KEY=your_key_here
 ```
 
-**Step 4:** Mention free quota is available at https://somark.tech/workbench/purchase.
+**Step 4:** Mention free quota is available:
+- Mainland China (中国大陆): https://somark.cn/workbench/purchase
+- Outside mainland China: https://somark.ai/studio/purchase
 
 ---
 
@@ -300,7 +306,9 @@ export SOMARK_API_KEY=your_key_here
 - Unsupported element format: tell the user to use only supported keys and values for `image`, `formula`, `table`, and `cs`.
 - Invalid feature configuration value: tell the user that all `feature-config` values must be booleans.
 - File not found: confirm the path is correct.
-- Quota exceeded: direct to https://somark.tech/workbench/purchase.
+- Quota exceeded: direct to:
+  - Mainland China (中国大陆): https://somark.cn/workbench/purchase
+  - Outside mainland China: https://somark.ai/studio/purchase
 - Parsed content appears incomplete: very long papers (>50 pages) may be proceedings volumes rather than single papers; ask the user to confirm.
 
 ---

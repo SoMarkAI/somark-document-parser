@@ -62,7 +62,11 @@ image-parser skill 进一步提供每个文本块在原图上的像素坐标，�
 
 ## 配置
 
-先在 [somark.tech](https://somark.tech) 获取 API Key，然后设置环境变量：
+获取 API Key：
+- 中国大陆：[somark.cn](https://somark.cn)
+- 中国大陆以外：[somark.ai](https://somark.ai)
+
+然后设置环境变量：
 
 ```bash
 export SOMARK_API_KEY=sk-your-api-key
@@ -70,7 +74,11 @@ export SOMARK_API_KEY=sk-your-api-key
 
 也可以在 Agent 设置中配置。首次使用时，Skill 会引导你完成设置。
 
-**免费额度：** SoMark 提供免费解析额度。可前往 [购买页面](https://somark.tech/workbench/purchase) 按页面说明领取。
+**免费额度：** SoMark 提供免费解析额度：
+- 中国大陆：前往 [购买页面](https://somark.cn/workbench/purchase)
+- 中国大陆以外：前往 [购买页面](https://somark.ai/studio/purchase)
+
+按页面说明领取。
 
 ---
 

@@ -19,7 +19,8 @@ SUPPORTED_IMAGE_EXTENSIONS = {
     ".heif",
     ".gif",
 }
-SOMARK_SYNC_URL = "https://somark.tech/api/v1/parse/sync"
+SOMARK_BASE_URL = os.environ.get("SOMARK_BASE_URL", "https://somark.cn/api/v1")
+SOMARK_SYNC_URL = f"{SOMARK_BASE_URL}/parse/sync"
 
 SUPPORTED_OUTPUT_FORMATS = {"markdown", "json"}
 

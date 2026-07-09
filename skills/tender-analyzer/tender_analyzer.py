@@ -8,9 +8,9 @@ from typing import Any
 
 import aiohttp
 
-SOMARK_BASE = "https://somark.tech/api/v1"
-ASYNC_URL = f"{SOMARK_BASE}/parse/async"
-CHECK_URL = f"{SOMARK_BASE}/parse/async_check"
+SOMARK_BASE_URL = os.environ.get("SOMARK_BASE_URL", "https://somark.cn/api/v1")
+ASYNC_URL = f"{SOMARK_BASE_URL}/parse/async"
+CHECK_URL = f"{SOMARK_BASE_URL}/parse/async_check"
 
 SUPPORTED_FORMATS = {
     ".pdf",

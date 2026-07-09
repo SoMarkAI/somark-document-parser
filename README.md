@@ -62,7 +62,11 @@ The image-parser skill goes further: it returns every text block with its exact 
 
 ## Setup
 
-Get an API key at [somark.tech](https://somark.tech), then set it as an environment variable:
+Get an API key:
+- Mainland China (中国大陆): [somark.cn](https://somark.cn)
+- Outside mainland China: [somark.ai](https://somark.ai)
+
+Then set it as an environment variable:
 
 ```bash
 export SOMARK_API_KEY=sk-your-api-key
@@ -70,7 +74,11 @@ export SOMARK_API_KEY=sk-your-api-key
 
 Or add it to your agent's settings. The skill will guide you through setup on first use.
 
-**Free quota:** SoMark offers a free tier. Visit the [purchase page](https://somark.tech/workbench/purchase) and follow the instructions there to claim it.
+**Free quota:** SoMark offers a free tier:
+- Mainland China (中国大陆): Visit the [purchase page](https://somark.cn/workbench/purchase)
+- Outside mainland China: Visit the [purchase page](https://somark.ai/studio/purchase)
+
+Follow the instructions there to claim it.
 
 ---
 

@@ -195,7 +195,11 @@ If the user has not configured an API key, follow the same setup steps as the so
 
 **Step 1:** Ask whether it is already configured — do not ask the user to paste the key in chat.
 
-**Step 2:** Direct them to https://somark.tech/login to create a key in the format `sk-******`.
+**Step 2:** Direct them to:
+- Mainland China (中国大陆): https://somark.cn/login
+- Outside mainland China: https://somark.ai/login
+
+Create a key in the format `sk-******`.
 
 **Step 3:** Ask them to run:
 
@@ -203,7 +207,9 @@ If the user has not configured an API key, follow the same setup steps as the so
 export SOMARK_API_KEY=your_key_here
 ```
 
-**Step 4:** Mention free quota is available at https://somark.tech/workbench/purchase.
+**Step 4:** Mention free quota is available:
+- Mainland China (中国大陆): https://somark.cn/workbench/purchase
+- Outside mainland China: https://somark.ai/studio/purchase
 
 ---
 
