@@ -19,8 +19,6 @@ SUPPORTED_IMAGE_EXTENSIONS = {
     ".heif",
     ".gif",
 }
-SOMARK_BASE_URL = os.environ.get("SOMARK_BASE_URL", "https://somark.cn/api/v1")
-SOMARK_SYNC_URL = f"{SOMARK_BASE_URL}/parse/sync"
 
 SUPPORTED_OUTPUT_FORMATS = {"markdown", "json"}
 
@@ -164,6 +162,13 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="also save legacy *.parsed.json (same content as *.text_bbox.json)",
     )
+    parser.add_argument(
+        "--base-url",
+        type=str,
+        default="",
+        help="SoMark API base URL (overrides SOMARK_BASE_URL env var), "
+        "e.g. https://somark.cn/api/v1 (mainland China) or https://somark.ai/api/v1 (outside)",
+    )
     return parser.parse_args()
 
 
@@ -250,6 +255,7 @@ def call_somark_sync(
     element_formats: dict[str, str],
     feature_config: dict[str, bool],
     retries: int = 0,
+    sync_url: str = "",
 ) -> dict[str, Any]:
     if not api_key:
         raise EnvironmentError("请先配置环境变量 SOMARK_API_KEY")
@@ -262,7 +268,7 @@ def call_somark_sync(
             element_formats=element_formats,
             feature_config=feature_config,
         )
-        req = urllib.request.Request(SOMARK_SYNC_URL, data=body, method="POST")
+        req = urllib.request.Request(sync_url, data=body, method="POST")
         req.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
         req.add_header("Accept", "application/json")
 
@@ -409,6 +415,9 @@ def main() -> None:
     input_path, images = resolve_input_and_images(args)
     api_key = resolve_api_key(args)
 
+    base_url = args.base_url or os.environ.get("SOMARK_BASE_URL", "https://somark.cn/api/v1")
+    sync_url = f"{base_url}/parse/sync"
+
     output_formats = [output_format.strip() for output_format in args.output_formats]
     for output_format in output_formats:
         if output_format not in SUPPORTED_OUTPUT_FORMATS:
@@ -455,6 +464,7 @@ def main() -> None:
             element_formats=element_formats,
             feature_config=feature_config,
             retries=args.retries,
+            sync_url=sync_url,
         )
 
         raw_json, text_bbox, markdown = build_outputs(

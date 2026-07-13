@@ -9,11 +9,6 @@ from typing import Any
 
 import aiohttp
 
-SOMARK_BASE_URL = os.environ.get("SOMARK_BASE_URL", "https://somark.cn/api/v1")
-
-ASYNC_URL = f"{SOMARK_BASE_URL}/parse/async"
-CHECK_URL = f"{SOMARK_BASE_URL}/parse/async_check"
-
 
 SUPPORTED_OUTPUT_FORMATS = {"markdown", "json"}
 
@@ -142,6 +137,13 @@ def parse_args() -> argparse.Namespace:
         },
         help='功能配置，传 JSON 对象，例如 \'{"enable_text_cross_page": false, "enable_table_cross_page": false, "enable_title_level_recognition": false, "enable_inline_image": true, "enable_table_image": true, "enable_image_understanding": true, "keep_header_footer": false}\'',
     )
+    parser.add_argument(
+        "--base-url",
+        type=str,
+        default="",
+        help="SoMark API base URL（覆盖 SOMARK_BASE_URL 环境变量），"
+        "例如 https://somark.cn/api/v1（中国大陆）或 https://somark.ai/api/v1（海外）",
+    )
 
     return parser.parse_args()
 
@@ -164,6 +166,7 @@ async def submit_task(
     output_formats: list[str],
     element_formats: dict,
     feature_config: dict,
+    async_url: str,
 ) -> str:
     data = aiohttp.FormData()
 
@@ -175,7 +178,7 @@ async def submit_task(
     for output_format in output_formats:
         data.add_field("output_formats", output_format)
 
-    async with session.post(ASYNC_URL, data=data) as resp:
+    async with session.post(async_url, data=data) as resp:
         if resp.status != 200:
             error_text = await resp.text()
             raise RuntimeError(f"提交任务失败 [{resp.status}]: {error_text}")
@@ -191,13 +194,14 @@ async def poll_task(
     session: aiohttp.ClientSession,
     task_id: str,
     api_key: str,
+    check_url: str,
     max_retries: int = 300,
     interval: int = 2,
 ) -> dict:
     for _ in range(max_retries):
         await asyncio.sleep(interval)
         async with session.post(
-            CHECK_URL, data={"api_key": api_key, "task_id": task_id}
+            check_url, data={"api_key": api_key, "task_id": task_id}
         ) as resp:
             if resp.status != 200:
                 continue
@@ -221,13 +225,15 @@ async def parse_document(
     output_formats: list[str],
     element_formats: dict,
     feature_config: dict,
+    async_url: str,
+    check_url: str,
 ) -> dict:
     print(f"  提交解析: {file_path.name}")
     task_id = await submit_task(
-        session, file_path, api_key, output_formats, element_formats, feature_config
+        session, file_path, api_key, output_formats, element_formats, feature_config, async_url
     )
     print(f"  等待结果 (task_id={task_id})...")
-    outputs = await poll_task(session, task_id, api_key)
+    outputs = await poll_task(session, task_id, api_key, check_url)
     print(f"  解析完成: {file_path.name}")
     return outputs
 
@@ -299,6 +305,10 @@ async def main() -> None:
         print("错误：请设置环境变量 SOMARK_API_KEY")
         raise SystemExit(1)
 
+    base_url = args.base_url or os.environ.get("SOMARK_BASE_URL", "https://somark.cn/api/v1")
+    async_url = f"{base_url}/parse/async"
+    check_url = f"{base_url}/parse/async_check"
+
     file1 = resolve_file(args.file1)
     file2 = resolve_file(args.file2)
 
@@ -351,10 +361,10 @@ async def main() -> None:
 
     async with aiohttp.ClientSession() as session:
         outputs1 = await parse_document(
-            session, file1, api_key, output_formats, element_formats, feature_config
+            session, file1, api_key, output_formats, element_formats, feature_config, async_url, check_url
         )
         outputs2 = await parse_document(
-            session, file2, api_key, output_formats, element_formats, feature_config
+            session, file2, api_key, output_formats, element_formats, feature_config, async_url, check_url
         )
 
     md1 = extract_markdown(outputs1, file1)

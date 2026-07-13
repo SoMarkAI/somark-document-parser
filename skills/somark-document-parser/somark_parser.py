@@ -8,9 +8,6 @@ from typing import Any
 
 import aiohttp
 
-SOMARK_BASE_URL = os.environ.get("SOMARK_BASE_URL", "https://somark.cn/api/v1")
-ASYNC_URL = f"{SOMARK_BASE_URL}/parse/async"
-CHECK_URL = f"{SOMARK_BASE_URL}/parse/async_check"
 
 SUPPORTED_FORMATS = {
     ".pdf",
@@ -135,6 +132,13 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_FEATURE_CONFIGS,
         help='功能配置，传 JSON 对象，例如 \'{"enable_inline_image": true, "enable_table_image": true}\'',
     )
+    parser.add_argument(
+        "--base-url",
+        type=str,
+        default="",
+        help="SoMark API base URL（覆盖 SOMARK_BASE_URL 环境变量），"
+        "例如 https://somark.cn/api/v1（中国大陆）或 https://somark.ai/api/v1（海外）",
+    )
     return parser.parse_args()
 
 
@@ -212,6 +216,7 @@ async def submit_task(
     output_formats: list[str],
     element_formats: dict[str, str],
     feature_config: dict[str, bool],
+    async_url: str,
 ) -> str:
     data = aiohttp.FormData()
     data.add_field("api_key", api_key)
@@ -221,7 +226,7 @@ async def submit_task(
     data.add_field("element_formats", json.dumps(element_formats, ensure_ascii=False))
     data.add_field("feature_config", json.dumps(feature_config, ensure_ascii=False))
 
-    async with session.post(ASYNC_URL, data=data) as response:
+    async with session.post(async_url, data=data) as response:
         if response.status != 200:
             error_text = await response.text()
             raise RuntimeError(f"提交任务失败 [{response.status}]: {error_text}")
@@ -237,13 +242,14 @@ async def poll_task(
     session: aiohttp.ClientSession,
     task_id: str,
     api_key: str,
+    check_url: str,
     max_retries: int = 1000,
     interval: int = 2,
 ) -> dict[str, Any]:
     for _ in range(max_retries):
         await asyncio.sleep(interval)
         async with session.post(
-            CHECK_URL, data={"api_key": api_key, "task_id": task_id}
+            check_url, data={"api_key": api_key, "task_id": task_id}
         ) as response:
             if response.status != 200:
                 continue
@@ -321,6 +327,8 @@ async def process_file_async(
     output_formats: list[str],
     element_formats: dict[str, str],
     feature_config: dict[str, bool],
+    async_url: str,
+    check_url: str,
 ) -> dict[str, Any]:
     print(f"\n开始解析: {file_path.name}")
     start_time = time.time()
@@ -334,9 +342,10 @@ async def process_file_async(
             output_formats,
             element_formats,
             feature_config,
+            async_url,
         )
         print(f"  等待结果 (task_id={task_id})...")
-        outputs = await poll_task(session, task_id, api_key)
+        outputs = await poll_task(session, task_id, api_key, check_url)
 
         elapsed = round(time.time() - start_time, 2)
         entry = save_outputs(output_dir, file_path, outputs)
@@ -365,6 +374,10 @@ async def main() -> None:
         print("用法: export SOMARK_API_KEY=your_key_here")
         raise SystemExit(1)
 
+    base_url = args.base_url or os.environ.get("SOMARK_BASE_URL", "https://somark.cn/api/v1")
+    async_url = f"{base_url}/parse/async"
+    check_url = f"{base_url}/parse/async_check"
+
     try:
         input_path, files_list = resolve_input_paths(args)
         output_formats = normalize_output_formats(args.output_formats)
@@ -391,6 +404,8 @@ async def main() -> None:
                 output_formats,
                 element_formats,
                 feature_config,
+                async_url,
+                check_url,
             )
             results.append(entry)
 

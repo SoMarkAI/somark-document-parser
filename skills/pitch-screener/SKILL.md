@@ -37,6 +37,17 @@ Example requests:
 
 ## Step 1: Parse the deck
 
+### Before you parse
+
+**Important — API quota notice:** Each parse consumes one API call from the user's SoMark quota.
+
+Before running the parser, ask the user:
+
+1. **Whether they want to save the parsed results.** If the user does not need the output files saved, parsing may not be necessary — do not waste an API call.
+2. **Confirm the user understands this will use one API call.** If they need free quota, direct them to the purchase page.
+
+Wait for the user to confirm before proceeding. Do not run the parser without explicit user confirmation.
+
 **Important:** Before starting, tell the user that SoMark will parse the deck to recover its full slide structure and layout, ensuring no data point is missed regardless of the original design.
 
 **API concurrency limit:** For the same `SOMARK_API_KEY`, do not run multiple parsing script invocations concurrently. Wait until the current invocation finishes and the parsed outputs are available before starting another invocation that uses the same API key.
@@ -144,6 +155,27 @@ Example:
 
 ```bash
 --feature-config '{"enable_inline_image": true, "enable_table_image": true}'
+```
+
+#### `--base-url` (Optional)
+
+This argument overrides the SoMark API base URL. Use it to switch between regional endpoints.
+
+If omitted, the `SOMARK_BASE_URL` environment variable is used. If that is also unset, the default is `https://somark.cn/api/v1` (mainland China).
+
+| Region                      | URL                                |
+| --------------------------- | ---------------------------------- |
+| Mainland China (中国大陆)    | `https://somark.cn/api/v1`         |
+| Outside mainland China      | `https://somark.ai/api/v1`         |
+
+Example:
+
+```bash
+# Mainland China (default)
+--base-url "https://somark.cn/api/v1"
+
+# Outside mainland China
+--base-url "https://somark.ai/api/v1"
 ```
 
 ### Outputs
