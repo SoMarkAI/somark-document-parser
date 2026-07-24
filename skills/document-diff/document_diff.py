@@ -55,7 +55,7 @@ def parse_json_list(value: str) -> list[str]:
     except json.JSONDecodeError as exc:
         raise argparse.ArgumentTypeError(f"数组参数必须是合法 JSON: {exc}") from exc
 
-    if not isinstance(parsed, list):
+    if not isinstance(parsed, list) or not parsed:
         raise argparse.ArgumentTypeError(
             '数组参数必须是 JSON 数组，例如 \'["markdown", "json"]\''
         )
@@ -234,6 +234,11 @@ async def parse_document(
     )
     print(f"  等待结果 (task_id={task_id})...")
     outputs = await poll_task(session, task_id, api_key, check_url)
+    if not isinstance(outputs, dict):
+        raise RuntimeError("SoMark 返回结果中的 outputs 不是对象")
+    missing = [name for name in output_formats if outputs.get(name) is None]
+    if missing:
+        raise RuntimeError(f"SoMark 返回结果缺少请求的输出格式: {', '.join(missing)}")
     print(f"  解析完成: {file_path.name}")
     return outputs
 
@@ -305,7 +310,10 @@ async def main() -> None:
         print("错误：请设置环境变量 SOMARK_API_KEY")
         raise SystemExit(1)
 
-    base_url = args.base_url or os.environ.get("SOMARK_BASE_URL", "https://somark.cn/api/v1")
+    base_url = (args.base_url or os.environ.get("SOMARK_BASE_URL", "https://somark.cn/api/v1")).rstrip("/")
+    if not base_url:
+        print("错误：SoMark API base URL 不能为空")
+        raise SystemExit(1)
     async_url = f"{base_url}/parse/async"
     check_url = f"{base_url}/parse/async_check"
 
@@ -388,6 +396,7 @@ async def main() -> None:
     summary = {
         "file1": str(file1),
         "file2": str(file2),
+        "base_url": base_url,
         "output_dir": str(output_dir),
         "report": str(report_path),
         "file1_markdown": str(output_dir / f"{file1.stem}.md"),

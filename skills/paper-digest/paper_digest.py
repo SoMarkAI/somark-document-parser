@@ -55,7 +55,7 @@ def parse_json_list(value: str) -> list[str]:
     except json.JSONDecodeError as exc:
         raise argparse.ArgumentTypeError(f"数组参数必须是合法 JSON: {exc}") from exc
 
-    if not isinstance(parsed, list):
+    if not isinstance(parsed, list) or not parsed:
         raise argparse.ArgumentTypeError(
             '数组参数必须是 JSON 数组，例如 \'["markdown", "json"]\''
         )
@@ -178,6 +178,14 @@ async def poll_task(session: aiohttp.ClientSession, task_id: str, api_key: str,
     raise RuntimeError(f"任务轮询超时: task_id={task_id}")
 
 
+def validate_requested_outputs(outputs: dict[str, Any], output_formats: list[str]) -> None:
+    if not isinstance(outputs, dict):
+        raise RuntimeError("SoMark 返回结果中的 outputs 不是对象")
+    missing = [name for name in output_formats if outputs.get(name) is None]
+    if missing:
+        raise RuntimeError(f"SoMark 返回结果缺少请求的输出格式: {', '.join(missing)}")
+
+
 async def main() -> None:
     args = parse_args()
     api_key = os.environ.get("SOMARK_API_KEY", "")
@@ -185,7 +193,10 @@ async def main() -> None:
         print("错误：请设置环境变量 SOMARK_API_KEY")
         raise SystemExit(1)
 
-    base_url = args.base_url or os.environ.get("SOMARK_BASE_URL", "https://somark.cn/api/v1")
+    base_url = (args.base_url or os.environ.get("SOMARK_BASE_URL", "https://somark.cn/api/v1")).rstrip("/")
+    if not base_url:
+        print("错误：SoMark API base URL 不能为空")
+        raise SystemExit(1)
     async_url = f"{base_url}/parse/async"
     check_url = f"{base_url}/parse/async_check"
 
@@ -253,6 +264,7 @@ async def main() -> None:
         )
         print(f"  等待结果 (task_id={task_id})...")
         outputs = await poll_task(session, task_id, api_key, check_url)
+        validate_requested_outputs(outputs, output_formats)
 
     elapsed = round(time.time() - start, 2)
 
@@ -276,6 +288,7 @@ async def main() -> None:
     summary = {
         "file": str(file_path),
         "output_dir": str(output_dir),
+        "base_url": base_url,
         "markdown": str(md_path) if md_content else None,
         "json": str(json_path) if json_content else None,
       

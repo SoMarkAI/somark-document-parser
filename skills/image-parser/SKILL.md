@@ -106,6 +106,8 @@ Supported values:
 | `markdown`   | Save the parsed contract as a Markdown file   |
 | `json`       | Save the parsed contract as a JSON output          |
 
+**Required:** `image-parser` must include `json` in `--output-formats`, because coordinate extraction is built from `outputs.json`.
+
 Example:
 
 ```bash

@@ -167,6 +167,8 @@ def resolve_input_paths(args: argparse.Namespace) -> tuple[Path, list[Path]]:
 
 def normalize_output_formats(output_formats: list[str]) -> list[str]:
     normalized = [output_format.strip() for output_format in output_formats]
+    if not normalized:
+        raise ValueError("输出格式不能为空")
     for output_format in normalized:
         if output_format not in SUPPORTED_OUTPUT_FORMATS:
             supported = ", ".join(sorted(SUPPORTED_OUTPUT_FORMATS))
@@ -283,6 +285,14 @@ def extract_metadata(outputs: dict[str, Any]) -> tuple[int, int]:
     )
 
 
+def validate_requested_outputs(outputs: dict[str, Any], output_formats: list[str]) -> None:
+    if not isinstance(outputs, dict):
+        raise RuntimeError("SoMark 返回结果中的 outputs 不是对象")
+    missing = [name for name in output_formats if outputs.get(name) is None]
+    if missing:
+        raise RuntimeError(f"SoMark 返回结果缺少请求的输出格式: {', '.join(missing)}")
+
+
 def save_outputs(
     output_dir: Path, file_path: Path, outputs: dict[str, Any]
 ) -> dict[str, Any]:
@@ -346,6 +356,7 @@ async def process_file_async(
         )
         print(f"  等待结果 (task_id={task_id})...")
         outputs = await poll_task(session, task_id, api_key, check_url)
+        validate_requested_outputs(outputs, output_formats)
 
         elapsed = round(time.time() - start_time, 2)
         entry = save_outputs(output_dir, file_path, outputs)
@@ -374,7 +385,10 @@ async def main() -> None:
         print("用法: export SOMARK_API_KEY=your_key_here")
         raise SystemExit(1)
 
-    base_url = args.base_url or os.environ.get("SOMARK_BASE_URL", "https://somark.cn/api/v1")
+    base_url = (args.base_url or os.environ.get("SOMARK_BASE_URL", "https://somark.cn/api/v1")).rstrip("/")
+    if not base_url:
+        print("错误：SoMark API base URL 不能为空")
+        raise SystemExit(1)
     async_url = f"{base_url}/parse/async"
     check_url = f"{base_url}/parse/async_check"
 
@@ -413,6 +427,7 @@ async def main() -> None:
         "input": str(input_path),
         "output_dir": str(output_dir),
         "request_options": {
+            "base_url": base_url,
             "output_formats": output_formats,
             "element_formats": element_formats,
             "feature_config": feature_config,
