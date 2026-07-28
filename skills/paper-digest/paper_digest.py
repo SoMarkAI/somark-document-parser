@@ -8,11 +8,6 @@ from typing import Any
 
 import aiohttp
 
-SOMARK_BASE = "https://somark.tech/api/v1"
-
-ASYNC_URL = f"{SOMARK_BASE}/parse/async"
-CHECK_URL = f"{SOMARK_BASE}/parse/async_check"
-
 SUPPORTED_FORMATS = {
     ".pdf",
     ".png",
@@ -60,7 +55,7 @@ def parse_json_list(value: str) -> list[str]:
     except json.JSONDecodeError as exc:
         raise argparse.ArgumentTypeError(f"数组参数必须是合法 JSON: {exc}") from exc
 
-    if not isinstance(parsed, list):
+    if not isinstance(parsed, list) or not parsed:
         raise argparse.ArgumentTypeError(
             '数组参数必须是 JSON 数组，例如 \'["markdown", "json"]\''
         )
@@ -124,6 +119,13 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_FEATURE_CONFIGS,
         help='功能配置，传 JSON 对象，例如 \'{"enable_inline_image": true, "enable_table_image": true}\'',
     )
+    parser.add_argument(
+        "--base-url",
+        type=str,
+        default="",
+        help="SoMark API base URL（覆盖 SOMARK_BASE_URL 环境变量），"
+        "例如 https://somark.cn/api/v1（中国大陆）或 https://somark.ai/api/v1（海外）",
+    )
     return parser.parse_args()
 
 
@@ -134,6 +136,7 @@ async def submit_task(
     output_formats: list[str],
     element_formats: dict[str, str],
     feature_config: dict[str, bool],
+    async_url: str,
 ) -> str:
     data = aiohttp.FormData()
     data.add_field("api_key", api_key)
@@ -143,7 +146,7 @@ async def submit_task(
     data.add_field("element_formats", json.dumps(element_formats, ensure_ascii=False))
     data.add_field("feature_config", json.dumps(feature_config, ensure_ascii=False))
 
-    async with session.post(ASYNC_URL, data=data) as resp:
+    async with session.post(async_url, data=data) as resp:
         if resp.status != 200:
             error_text = await resp.text()
             raise RuntimeError(f"提交任务失败 [{resp.status}]: {error_text}")
@@ -156,10 +159,10 @@ async def submit_task(
 
 
 async def poll_task(session: aiohttp.ClientSession, task_id: str, api_key: str,
-                    max_retries: int = 300, interval: int = 2) -> dict:
+                    check_url: str, max_retries: int = 300, interval: int = 2) -> dict:
     for _ in range(max_retries):
         await asyncio.sleep(interval)
-        async with session.post(CHECK_URL, data={"api_key": api_key, "task_id": task_id}) as resp:
+        async with session.post(check_url, data={"api_key": api_key, "task_id": task_id}) as resp:
             if resp.status != 200:
                 continue
             body = await resp.json()
@@ -175,12 +178,27 @@ async def poll_task(session: aiohttp.ClientSession, task_id: str, api_key: str,
     raise RuntimeError(f"任务轮询超时: task_id={task_id}")
 
 
+def validate_requested_outputs(outputs: dict[str, Any], output_formats: list[str]) -> None:
+    if not isinstance(outputs, dict):
+        raise RuntimeError("SoMark 返回结果中的 outputs 不是对象")
+    missing = [name for name in output_formats if outputs.get(name) is None]
+    if missing:
+        raise RuntimeError(f"SoMark 返回结果缺少请求的输出格式: {', '.join(missing)}")
+
+
 async def main() -> None:
     args = parse_args()
     api_key = os.environ.get("SOMARK_API_KEY", "")
     if not api_key:
         print("错误：请设置环境变量 SOMARK_API_KEY")
         raise SystemExit(1)
+
+    base_url = (args.base_url or os.environ.get("SOMARK_BASE_URL", "https://somark.cn/api/v1")).rstrip("/")
+    if not base_url:
+        print("错误：SoMark API base URL 不能为空")
+        raise SystemExit(1)
+    async_url = f"{base_url}/parse/async"
+    check_url = f"{base_url}/parse/async_check"
 
     file_path = Path(args.file).resolve()
     if not file_path.exists():
@@ -242,9 +260,11 @@ async def main() -> None:
             output_formats,
             element_formats,
             feature_config,
+            async_url,
         )
         print(f"  等待结果 (task_id={task_id})...")
-        outputs = await poll_task(session, task_id, api_key)
+        outputs = await poll_task(session, task_id, api_key, check_url)
+        validate_requested_outputs(outputs, output_formats)
 
     elapsed = round(time.time() - start, 2)
 
@@ -268,6 +288,7 @@ async def main() -> None:
     summary = {
         "file": str(file_path),
         "output_dir": str(output_dir),
+        "base_url": base_url,
         "markdown": str(md_path) if md_content else None,
         "json": str(json_path) if json_content else None,
       

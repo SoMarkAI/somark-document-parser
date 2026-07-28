@@ -19,7 +19,6 @@ SUPPORTED_IMAGE_EXTENSIONS = {
     ".heif",
     ".gif",
 }
-SOMARK_SYNC_URL = "https://somark.tech/api/v1/parse/sync"
 
 SUPPORTED_OUTPUT_FORMATS = {"markdown", "json"}
 
@@ -55,7 +54,7 @@ def parse_json_list(value: str) -> list[str]:
     except json.JSONDecodeError as exc:
         raise argparse.ArgumentTypeError(f"数组参数必须是合法 JSON: {exc}") from exc
 
-    if not isinstance(parsed, list):
+    if not isinstance(parsed, list) or not parsed:
         raise argparse.ArgumentTypeError(
             '数组参数必须是 JSON 数组，例如 \'["markdown", "json"]\''
         )
@@ -163,6 +162,13 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="also save legacy *.parsed.json (same content as *.text_bbox.json)",
     )
+    parser.add_argument(
+        "--base-url",
+        type=str,
+        default="",
+        help="SoMark API base URL (overrides SOMARK_BASE_URL env var), "
+        "e.g. https://somark.cn/api/v1 (mainland China) or https://somark.ai/api/v1 (outside)",
+    )
     return parser.parse_args()
 
 
@@ -249,6 +255,7 @@ def call_somark_sync(
     element_formats: dict[str, str],
     feature_config: dict[str, bool],
     retries: int = 0,
+    sync_url: str = "",
 ) -> dict[str, Any]:
     if not api_key:
         raise EnvironmentError("请先配置环境变量 SOMARK_API_KEY")
@@ -261,7 +268,7 @@ def call_somark_sync(
             element_formats=element_formats,
             feature_config=feature_config,
         )
-        req = urllib.request.Request(SOMARK_SYNC_URL, data=body, method="POST")
+        req = urllib.request.Request(sync_url, data=body, method="POST")
         req.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
         req.add_header("Accept", "application/json")
 
@@ -351,6 +358,7 @@ def build_outputs(
     response: dict[str, Any],
     image_path: Path,
     include_without_bbox: bool,
+    output_formats: list[str],
 ) -> tuple[dict[str, Any], dict[str, Any], str | None]:
     code = response.get("code")
     message = response.get("message", "")
@@ -366,6 +374,8 @@ def build_outputs(
 
     if not isinstance(raw_json, dict):
         raise RuntimeError("SoMark 返回结果缺少 outputs.json")
+    if "markdown" in output_formats and not isinstance(markdown, str):
+        raise RuntimeError("SoMark 返回结果缺少请求的输出格式: markdown")
 
     items, page_count = extract_text_bbox_items(
         raw_json=raw_json, include_without_bbox=include_without_bbox
@@ -408,11 +418,20 @@ def main() -> None:
     input_path, images = resolve_input_and_images(args)
     api_key = resolve_api_key(args)
 
+    base_url = (args.base_url or os.environ.get("SOMARK_BASE_URL", "https://somark.cn/api/v1")).rstrip("/")
+    if not base_url:
+        raise ValueError("SoMark API base URL 不能为空")
+    sync_url = f"{base_url}/parse/sync"
+
     output_formats = [output_format.strip() for output_format in args.output_formats]
+    if not output_formats:
+        raise ValueError("输出格式不能为空")
     for output_format in output_formats:
         if output_format not in SUPPORTED_OUTPUT_FORMATS:
             supported = ", ".join(sorted(SUPPORTED_OUTPUT_FORMATS))
             raise ValueError(f"不支持的输出格式: {output_format}，仅支持: {supported}")
+    if "json" not in output_formats:
+        raise ValueError("image-parser 的 --output-formats 必须包含 json，以生成坐标结果")
 
 
 
@@ -454,12 +473,14 @@ def main() -> None:
             element_formats=element_formats,
             feature_config=feature_config,
             retries=args.retries,
+            sync_url=sync_url,
         )
 
         raw_json, text_bbox, markdown = build_outputs(
             response=response,
             image_path=image_path,
             include_without_bbox=args.include_without_bbox,
+            output_formats=output_formats,
         )
 
         text_bbox_path = output_dir / f"{image_path.stem}.text_bbox.json"
@@ -514,6 +535,7 @@ def main() -> None:
     index = {
         "input": str(input_path),
         "output_dir": str(output_dir),
+        "base_url": base_url,
         "results": summary,
     }
     index_path = output_dir / "results_index.json"

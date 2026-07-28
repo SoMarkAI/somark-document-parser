@@ -39,6 +39,17 @@ Example requests:
 
 ## Parsing the contract
 
+### Before you parse
+
+**Important — API quota notice:** Each parse consumes one API call from the user's SoMark quota.
+
+Before running the parser, ask the user:
+
+1. **Whether they want to save the parsed results.** If the user does not need the output files saved, parsing may not be necessary — do not waste an API call.
+2. **Confirm the user understands this will use one API call.** If they need free quota, direct them to the purchase page.
+
+Wait for the user to confirm before proceeding. Do not run the parser without explicit user confirmation.
+
 **Important:** Before starting, tell the user that SoMark will parse the contract to preserve its full clause structure, enabling a thorough review that won't miss buried terms due to formatting issues.
 
 **API concurrency limit:** For the same `SOMARK_API_KEY`, do not run multiple parsing script invocations concurrently. Wait until the current invocation finishes and the parsed outputs are available before starting another invocation that uses the same API key.
@@ -153,6 +164,27 @@ Example:
 --feature-config '{"enable_text_cross_page": false, "enable_table_cross_page": false, "enable_title_level_recognition": false, "enable_inline_image": true, "enable_table_image": true, "enable_image_understanding": true, "keep_header_footer": false}'
 ```
 
+#### `--base-url` (Optional)
+
+This argument overrides the SoMark API base URL. Use it to switch between regional endpoints.
+
+If omitted, the `SOMARK_BASE_URL` environment variable is used. If that is also unset, the default is `https://somark.cn/api/v1` (mainland China).
+
+| Region                      | URL                                |
+| --------------------------- | ---------------------------------- |
+| Mainland China (中国大陆)    | `https://somark.cn/api/v1`         |
+| Outside mainland China      | `https://somark.ai/api/v1`         |
+
+Example:
+
+```bash
+# Mainland China (default)
+--base-url "https://somark.cn/api/v1"
+
+# Outside mainland China
+--base-url "https://somark.ai/api/v1"
+```
+
 ### Outputs
 
 - `<filename>.md` — full contract in Markdown (preserves clause structure)
@@ -257,7 +289,11 @@ If the user has not configured an API key:
 
 **Step 1:** Ask whether `SOMARK_API_KEY` is already set — do not ask for the key in chat.
 
-**Step 2:** Direct them to https://somark.tech/login, open "API Workbench" → "APIKey", and create a key in the format `sk-******`.
+**Step 2:** Direct them to:
+- Mainland China (中国大陆): https://somark.cn/login
+- Outside mainland China: https://somark.ai/login
+
+Open "API Workbench" → "APIKey", and create a key in the format `sk-******`.
 
 **Step 3:** Ask them to run:
 
@@ -265,7 +301,9 @@ If the user has not configured an API key:
 export SOMARK_API_KEY=your_key_here
 ```
 
-**Step 4:** Mention free quota is available at https://somark.tech/workbench/purchase.
+**Step 4:** Mention free quota is available:
+- Mainland China (中国大陆): https://somark.cn/workbench/purchase
+- Outside mainland China: https://somark.ai/studio/purchase
 
 ---
 
@@ -278,7 +316,9 @@ export SOMARK_API_KEY=your_key_here
 - `1107` / Invalid API Key: ask the user to verify `SOMARK_API_KEY`.
 - `2000` / Invalid parameters: check file path and format.
 - File not found: confirm the path is correct.
-- Quota exceeded: direct to https://somark.tech/workbench/purchase.
+- Quota exceeded: direct to:
+  - Mainland China (中国大陆): https://somark.cn/workbench/purchase
+  - Outside mainland China: https://somark.ai/studio/purchase
 - File too large (>200MB / >300 pages): ask the user to split the contract into parts.
 
 ---
