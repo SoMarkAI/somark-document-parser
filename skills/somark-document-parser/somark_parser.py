@@ -222,7 +222,10 @@ async def submit_task(
 ) -> str:
     data = aiohttp.FormData(quote_fields=False)
     data.add_field("api_key", api_key)
-    data.add_field("file", file_path.read_bytes(), filename=file_path.name)
+    filename = file_path.name
+    if "\r" in filename or "\n" in filename:
+        raise ValueError(f"非法文件名（包含换行符）: {filename!r}")
+    data.add_field("file", file_path.read_bytes(), filename=filename)
     for output_format in output_formats:
         data.add_field("output_formats", output_format)
     data.add_field("element_formats", json.dumps(element_formats, ensure_ascii=False))
@@ -307,7 +310,7 @@ def save_outputs(
 ) -> dict[str, Any]:
     outputs = get_outputs(api_response)
     md_content = outputs.get("markdown", "")
-    json_content = outputs.get("json", {})
+    has_json_output = outputs.get("json") is not None
 
 
     md_path = output_dir / f"{file_path.stem}.md"
@@ -319,7 +322,7 @@ def save_outputs(
         md_path.write_text(md_content, encoding="utf-8")
         print(f"  Markdown 已保存: {md_path}")
 
-    if json_content:
+    if has_json_output:
         json_path.write_text(
             json.dumps(api_response, ensure_ascii=False, indent=2), encoding="utf-8"
         )
@@ -332,7 +335,7 @@ def save_outputs(
         "status": "success",
         "file": str(file_path),
         "markdown": str(md_path) if md_content else None,
-        "json": str(json_path) if json_content else None,
+        "json": str(json_path) if has_json_output else None,
        
         "page_count": page_count,
         "token_count": token_count,
