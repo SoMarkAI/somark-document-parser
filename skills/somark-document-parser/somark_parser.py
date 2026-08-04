@@ -112,7 +112,7 @@ def parse_args() -> argparse.Namespace:
         "--output",
         type=str,
         default=".",
-        help="输出目录（默认：当前目录）",
+        help="输出目录（可选，默认：当前目录）",
     )
     parser.add_argument(
         "--output-formats",
@@ -220,7 +220,7 @@ async def submit_task(
     feature_config: dict[str, bool],
     async_url: str,
 ) -> str:
-    data = aiohttp.FormData()
+    data = aiohttp.FormData(quote_fields=False)
     data.add_field("api_key", api_key)
     data.add_field("file", file_path.read_bytes(), filename=file_path.name)
     for output_format in output_formats:
@@ -262,22 +262,31 @@ async def poll_task(
         if status == "FAILED":
             raise RuntimeError(f"SoMark 任务失败: {data}")
         if status == "SUCCESS":
-            result = data.get("result") or {}
-            return result.get("outputs") or result
+            # 保留完整 API 响应：code、message 和 data（含任务元数据与 result）。
+            return body
 
     raise RuntimeError(f"任务轮询超时: task_id={task_id}")
 
 
-def extract_metadata(outputs: dict[str, Any]) -> tuple[int, int]:
-    json_data = outputs.get("json")
-    if not isinstance(json_data, dict):
-        return 0, 0
+def get_task_data(api_response: dict[str, Any]) -> dict[str, Any]:
+    data = api_response.get("data")
+    return data if isinstance(data, dict) else {}
 
-    metadata = json_data.get("metadata")
+
+def get_outputs(api_response: dict[str, Any]) -> dict[str, Any]:
+    result = get_task_data(api_response).get("result")
+    if not isinstance(result, dict):
+        return {}
+    outputs = result.get("outputs")
+    return outputs if isinstance(outputs, dict) else {}
+
+
+def extract_metadata(api_response: dict[str, Any]) -> tuple[int, int]:
+    metadata = get_task_data(api_response).get("metadata")
     if not isinstance(metadata, dict):
         return 0, 0
 
-    page_count = metadata.get("page_count", 0)
+    page_count = metadata.get("page_num", 0)
     token_count = metadata.get("token_count", 0)
     return (
         page_count if isinstance(page_count, int) else 0,
@@ -294,8 +303,9 @@ def validate_requested_outputs(outputs: dict[str, Any], output_formats: list[str
 
 
 def save_outputs(
-    output_dir: Path, file_path: Path, outputs: dict[str, Any]
+    output_dir: Path, file_path: Path, api_response: dict[str, Any]
 ) -> dict[str, Any]:
+    outputs = get_outputs(api_response)
     md_content = outputs.get("markdown", "")
     json_content = outputs.get("json", {})
 
@@ -311,13 +321,13 @@ def save_outputs(
 
     if json_content:
         json_path.write_text(
-            json.dumps(json_content, ensure_ascii=False, indent=2), encoding="utf-8"
+            json.dumps(api_response, ensure_ascii=False, indent=2), encoding="utf-8"
         )
-        print(f"  JSON 已保存: {json_path}")
+        print(f"  完整 JSON 已保存: {json_path}")
 
    
 
-    page_count, token_count = extract_metadata(outputs)
+    page_count, token_count = extract_metadata(api_response)
     return {
         "status": "success",
         "file": str(file_path),
@@ -355,11 +365,12 @@ async def process_file_async(
             async_url,
         )
         print(f"  等待结果 (task_id={task_id})...")
-        outputs = await poll_task(session, task_id, api_key, check_url)
+        api_response = await poll_task(session, task_id, api_key, check_url)
+        outputs = get_outputs(api_response)
         validate_requested_outputs(outputs, output_formats)
 
         elapsed = round(time.time() - start_time, 2)
-        entry = save_outputs(output_dir, file_path, outputs)
+        entry = save_outputs(output_dir, file_path, api_response)
         entry["elapsed_seconds"] = elapsed
 
         print(f"  页数: {entry['page_count']}")
@@ -382,7 +393,10 @@ async def main() -> None:
     api_key = os.environ.get("SOMARK_API_KEY", "")
     if not api_key:
         print("错误：请设置环境变量 SOMARK_API_KEY")
-        print("用法: export SOMARK_API_KEY=your_key_here")
+        print('macOS/Linux (Bash/Zsh): export SOMARK_API_KEY="your_key_here"')
+        print('Linux (Fish):           set -x SOMARK_API_KEY "your_key_here"')
+        print('Windows PowerShell:     $env:SOMARK_API_KEY = "your_key_here"')
+        print('Windows CMD:            set "SOMARK_API_KEY=your_key_here"')
         raise SystemExit(1)
 
     base_url = (args.base_url or os.environ.get("SOMARK_BASE_URL", "https://somark.cn/api/v1")).rstrip("/")

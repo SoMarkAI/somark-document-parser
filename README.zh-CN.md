@@ -66,10 +66,26 @@ image-parser skill 进一步提供每个文本块在原图上的像素坐标，�
 - 中国大陆：[somark.cn](https://somark.cn)
 - 中国大陆以外：[somark.ai](https://somark.ai)
 
-然后设置环境变量：
+然后根据终端类型设置环境变量：
 
 ```bash
-export SOMARK_API_KEY=sk-your-api-key
+# macOS / Linux（Bash、Zsh）
+export SOMARK_API_KEY="sk-your-api-key"
+```
+
+```fish
+# Linux（Fish）
+set -x SOMARK_API_KEY "sk-your-api-key"
+```
+
+```powershell
+# Windows PowerShell
+$env:SOMARK_API_KEY = "sk-your-api-key"
+```
+
+```bat
+# Windows 命令提示符（CMD）
+set "SOMARK_API_KEY=sk-your-api-key"
 ```
 
 也可以在 Agent 设置中配置。首次使用时，Skill 会引导你完成设置。
@@ -101,7 +117,7 @@ export SOMARK_API_KEY=sk-your-api-key
 | ---------- | ------ |
 | 单文件大小 | 200 MB |
 | 单文件页数 | 300 页 |
-| 账号 QPS   | 1      |
+| 账号 QPS   | 4      |
 
 ---
 

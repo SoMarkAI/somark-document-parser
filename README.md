@@ -66,10 +66,26 @@ Get an API key:
 - Mainland China (中国大陆): [somark.cn](https://somark.cn)
 - Outside mainland China: [somark.ai](https://somark.ai)
 
-Then set it as an environment variable:
+Then set it as an environment variable for your terminal:
 
 ```bash
-export SOMARK_API_KEY=sk-your-api-key
+# macOS / Linux (Bash, Zsh)
+export SOMARK_API_KEY="sk-your-api-key"
+```
+
+```fish
+# Linux (Fish)
+set -x SOMARK_API_KEY "sk-your-api-key"
+```
+
+```powershell
+# Windows PowerShell
+$env:SOMARK_API_KEY = "sk-your-api-key"
+```
+
+```bat
+# Windows Command Prompt (CMD)
+set "SOMARK_API_KEY=sk-your-api-key"
 ```
 
 Or add it to your agent's settings. The skill will guide you through setup on first use.
@@ -101,7 +117,7 @@ The result: your agent gives accurate, context-aware answers instead of hallucin
 | --------------- | --------- |
 | Max file size   | 200 MB    |
 | Max pages       | 300 pages |
-| QPS per account | 1         |
+| QPS per account | 4         |
 
 ---
 
