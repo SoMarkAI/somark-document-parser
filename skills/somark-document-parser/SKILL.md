@@ -71,12 +71,52 @@ metadata: {"openclaw": {"emoji": "📄", "requires": {"env": ["SOMARK_API_KEY"]}
 python somark_parser.py -f <文件路径> -o <输出目录>
 ```
 
+请按所使用的终端选择相应的命令
+
+**macOS / Linux（Bash、Zsh）**
+
+```bash
+export SOMARK_API_KEY="your_key_here"
+python somark_parser.py -f "/path/to/file.pdf" -o "./output"
+```
+
+**Linux（Fish）**
+
+```fish
+set -x SOMARK_API_KEY "your_key_here"
+python somark_parser.py -f "/path/to/file.pdf" -o "./output"
+```
+
+**Windows PowerShell**
+
+```powershell
+$env:SOMARK_API_KEY = "your_key_here"
+python .\somark_parser.py -f "C:\Users\your-name\Documents\file.pdf" -o ".\output"
+```
+
+**Windows 命令提示符（CMD）**
+
+```bat
+set "SOMARK_API_KEY=your_key_here"
+python somark_parser.py -f "C:\Users\your-name\Documents\file.pdf" -o ".\output"
+```
+
+以上环境变量命令仅对当前终端会话有效。若希望 PowerShell 在后续会话中保留该变量，请运行以下命令，然后重新打开终端：
+
+```powershell
+[Environment]::SetEnvironmentVariable("SOMARK_API_KEY", "your_key_here", "User")
+```
+
 **解析脚本位置：** `somark_parser.py`（与 SKILL.md 同目录）
+
+生成的 `<文件名>.json` 保存完整 API 响应（`code`、`message`、`data`）；解析结果位于 `data.result.outputs`，任务 ID、状态和页数等元数据位于 `data`。
 
 **支持的文件格式：**
 - PDF：`.pdf`
 - 图片：`.png`, `.jpg`, `.jpeg`, `.bmp`, `.tiff`, `.webp`, `.heic`, `.heif` 等
 - Office：`.doc`, `.docx`, `.ppt`, `.pptx`
+
+**加密文件不受支持：** 不支持解析任何需要密码或已加密的文件，且不会询问、接收或传递文件密码。请先在本地解除加密，再进行解析。
 
 ---
 
@@ -104,17 +144,20 @@ python somark_parser.py -f <文件路径> -o <输出目录>
 
 **第三步：配置 API Key**
 
-引导用户在**自己的终端**中设置环境变量（⚠️ 不要让用户把 Key 发送到对话窗口）：
+引导用户在**自己的终端**中设置环境变量（⚠️ 不要让用户把 Key 发送到对话窗口）。必须先确认用户所用的终端，提供匹配的命令：
 
-- 中文用户：请在您自己的终端中运行以下命令（将 `your_key_here` 替换为您的真实 Key），然后告诉我配置完成了：
-  ```
-  export SOMARK_API_KEY=your_key_here
-  ```
+- 中文用户：请在您自己的终端中运行与终端类型匹配的以下命令（将 `your_key_here` 替换为您的真实 Key），然后告诉我配置完成了：
 
-- English Users: Please run the following command in **your own terminal** (replace `your_key_here` with your actual key), then let me know when done:
-  ```
-  export SOMARK_API_KEY=your_key_here
-  ```
+  | 终端 | 当前会话设置命令 |
+  | --- | --- |
+  | macOS / Linux Bash、Zsh | `export SOMARK_API_KEY="your_key_here"` |
+  | Linux Fish | `set -x SOMARK_API_KEY "your_key_here"` |
+  | Windows PowerShell | `$env:SOMARK_API_KEY = "your_key_here"` |
+  | Windows CMD | `set "SOMARK_API_KEY=your_key_here"` |
+
+  Windows PowerShell 如需持久保存，可运行 `[Environment]::SetEnvironmentVariable("SOMARK_API_KEY", "your_key_here", "User")`，然后重新打开终端。Windows 的文件路径使用 `C:\...` 并用双引号包裹；示例命令保持单行，避免使用 Bash 的反斜杠续行。
+
+- English Users: Ask which terminal they use, then provide the matching command above. Do not give the Unix `export` command to Windows users. For Windows, use a quoted `C:\...` path and a single-line command; do not use Bash backslash continuations.
 
 **第四步：询问是否需要免费额度**
 
@@ -146,6 +189,7 @@ python somark_parser.py -f <文件路径> -o <输出目录>
 - `1107`：API Key 无效，我会提醒用户检查配置
 - `2000`：请求参数问题
 - 文件超出限制（200MB / 300页）：建议用户拆分文件
+- 加密或需要密码的文件：明确告知“**不支持加密文件**”，说明 skill 不支持传入密码；请用户先在本地解除加密后重试。不要只说“任务失败”。
 
 ---
 
@@ -157,3 +201,4 @@ python somark_parser.py -f <文件路径> -o <输出目录>
 - 文件参数支持本地文件的绝对路径和相对路径
 - 若文件路径不存在，告知用户路径有误
 - 用户可以直接发送文件，无需提供文件路径
+- **不支持加密文件或需要密码的文件**：不询问、接收或传递文件密码；请用户先在本地解除加密后再解析

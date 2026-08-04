@@ -25,11 +25,27 @@ cp skills/somark-document-parser/somark_parser.py .agents/skills/somark-document
 ```bash
 # 安装此 skill
 npx skills add https://github.com/SoMarkAI/somark-document-parser
+```
 
-# 直接运行解析脚本
-export SOMARK_API_KEY=sk-your-key
-python skills/somark-document-parser/somark_parser.py -f /path/to/file.pdf -o ./output
-python skills/somark-document-parser/somark_parser.py -d /path/to/folder -o ./output
+直接运行解析脚本：
+
+```bash
+# macOS/Linux Bash、Zsh
+export SOMARK_API_KEY="sk-your-key"
+python skills/somark-document-parser/somark_parser.py -f "/path/to/file.pdf" -o "./output"
+python skills/somark-document-parser/somark_parser.py -d "/path/to/folder" -o "./output"
+```
+
+```powershell
+# Windows PowerShell
+$env:SOMARK_API_KEY = "sk-your-key"
+python .\skills\somark-document-parser\somark_parser.py -f "C:\path\to\file.pdf" -o ".\output"
+```
+
+```bat
+# Windows CMD
+set "SOMARK_API_KEY=sk-your-key"
+python skills\somark-document-parser\somark_parser.py -f "C:\path\to\file.pdf" -o ".\output"
 ```
 
 依赖：`aiohttp`（Python）。API Key **只能**通过环境变量传入，不支持 `--api-key` 参数。
@@ -48,7 +64,7 @@ python skills/somark-document-parser/somark_parser.py -d /path/to/folder -o ./ou
 1. `POST /api/v1/extract/async` — 上传文件，获取 `task_id`
 2. `POST /api/v1/extract/async_check` — 轮询状态直到 `SUCCESS` 或 `FAILED`
 
-输出格式同时请求 `markdown` 和 `json`，结果写入 `<stem>.md` 和 `<stem>.json`。
+输出格式同时请求 `markdown` 和 `json`。`<stem>.md` 写入 Markdown 输出，`<stem>.json` 写入完整 API 响应（`code`、`message`、`data`；其中 `data` 包含任务元数据与 `result.outputs`）。
 
 ## 安全规则
 

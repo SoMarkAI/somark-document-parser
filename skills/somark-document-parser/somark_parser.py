@@ -26,8 +26,10 @@ api_key = os.environ.get('SOMARK_API_KEY', '')
 
 if not api_key:
     print("错误：请设置环境变量 SOMARK_API_KEY")
-    print("用法: export SOMARK_API_KEY=your_key_here")
-    print("     python somark_parser.py -f /path/to/file.pdf")
+    print("macOS/Linux (Bash/Zsh): export SOMARK_API_KEY=your_key_here")
+    print("Windows PowerShell:     $env:SOMARK_API_KEY = 'your_key_here'")
+    print("Windows CMD:            set \"SOMARK_API_KEY=your_key_here\"")
+    print("运行示例: python somark_parser.py -f <文件路径> -o <输出目录>")
     exit(1)
 
 # 确定输入文件
@@ -35,8 +37,8 @@ input_path = args.file or args.dir
 
 if not input_path:
     print("错误：请指定文件或文件夹路径")
-    print("用法: python somark_parser.py -f /path/to/file.pdf")
-    print("   或: python somark_parser.py -d /path/to/folder")
+    print("用法: python somark_parser.py -f <文件路径> -o <输出目录>")
+    print("   或: python somark_parser.py -d <文件夹路径> -o <输出目录>")
     exit(1)
 
 input_file_path = Path(input_path).resolve()
@@ -81,6 +83,24 @@ print(f"找到 {len(files_list)} 个文件待处理")
 print(f"输出目录: {output_dir}")
 
 
+def get_task_data(api_response):
+    """从完整 API 响应中取得 data 字段。"""
+    if not isinstance(api_response, dict):
+        return {}
+    data = api_response.get('data', {})
+    return data if isinstance(data, dict) else {}
+
+
+def get_outputs(api_response):
+    """从完整 API 响应中取得解析输出。"""
+    task_data = get_task_data(api_response)
+    result = task_data.get('result', {})
+    if not isinstance(result, dict):
+        return {}
+    outputs = result.get('outputs', {})
+    return outputs if isinstance(outputs, dict) else {}
+
+
 async def check_task_status(session, api_key, task_id, max_retries=1000, retry_interval=2):
     """检查异步任务状态"""
     for attempt in range(max_retries):
@@ -106,11 +126,8 @@ async def check_task_status(session, api_key, task_id, max_retries=1000, retry_i
                         print(f"  Task failed: {str(data)[:200]}")
                         return None
                     if 'status' in data and data['status'] == 'SUCCESS':
-                        result = data.get('result', {})
-                        if 'outputs' in result:
-                            return result['outputs']
-                        else:
-                            return result
+                        # 保留完整 API 响应：code、message 和 data（含任务元数据与 result）。
+                        return resp
                 else:
                     print(f"  Check failed with status {response.status}")
         except Exception as e:
@@ -131,7 +148,8 @@ async def process_file_async(session, file_path):
 
     try:
         # 准备文件数据
-        data = aiohttp.FormData()
+        # 禁用字段百分号编码，避免中文文件名被上传为 %E6%96%87...。
+        data = aiohttp.FormData(quote_fields=False)
         data.add_field('output_formats', 'markdown')
         data.add_field('output_formats', 'json')
         data.add_field('api_key', api_key)
@@ -169,27 +187,27 @@ async def process_file_async(session, file_path):
             # 计算耗时
             elapsed_time = time.time() - start_time
 
-            # 从结果中提取页数和 token 数量
+            # 从完整 API 响应的 data 中提取任务元数据及输出。
+            task_data = get_task_data(result)
+            outputs = get_outputs(result)
             if result:
-                if 'json' in result and isinstance(result['json'], dict):
-                    # 尝试从 json 结果中提取元数据
-                    json_data = result['json']
-                    if 'metadata' in json_data:
-                        page_count = json_data['metadata'].get('page_count', 0)
-                        token_count = json_data['metadata'].get('token_count', 0)
+                metadata = task_data.get('metadata', {})
+                if isinstance(metadata, dict):
+                    page_count = metadata.get('page_num', 0)
+                    token_count = metadata.get('token_count', 0)
 
             if result and SAVE_FILE:
                 base_name = file_path.stem
                 md_path = output_dir / f"{base_name}.md"
                 json_path = output_dir / f"{base_name}.json"
 
-                if 'markdown' in result:
-                    md_path.write_text(result['markdown'], encoding='utf-8')
+                if 'markdown' in outputs:
+                    md_path.write_text(outputs['markdown'], encoding='utf-8')
                     print(f"  Markdown 已保存: {md_path}")
-                if 'json' in result:
-                    json_path.write_text(json.dumps(
-                        result['json'], ensure_ascii=False, indent=2), encoding='utf-8')
-                    print(f"  JSON 已保存: {json_path}")
+                # 保存完整 API 响应：code、message、data（含 metadata、result、outputs）。
+                json_path.write_text(json.dumps(
+                    result, ensure_ascii=False, indent=2), encoding='utf-8')
+                print(f"  完整 JSON 已保存: {json_path}")
 
                 print(f"\n=== 解析完成统计 ===")
                 print(f"  页数: {page_count}")

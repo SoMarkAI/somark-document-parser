@@ -41,13 +41,36 @@ When you share a document with your AI agent, SoMark parses it into structured M
 
 ## Setup / 配置
 
-Get an API key at [somark.tech](https://somark.tech), then set it as an environment variable:
+Get an API key at [somark.tech](https://somark.tech), then set it as an environment variable. Use the command for your terminal:
 
 前往 [somark.tech](https://somark.tech) 获取 API Key，然后设置环境变量：
 
+**macOS / Linux（Bash、Zsh）**
+
 ```bash
-export SOMARK_API_KEY=sk-your-api-key
+# macOS / Linux (Bash, Zsh)
+export SOMARK_API_KEY="sk-your-api-key"
 ```
+
+**Linux（Fish）**
+
+```fish
+set -x SOMARK_API_KEY "sk-your-api-key"
+```
+
+**Windows PowerShell**
+
+```powershell
+$env:SOMARK_API_KEY = "sk-your-api-key"
+```
+
+**Windows Command Prompt（CMD）**
+
+```bat
+set "SOMARK_API_KEY=sk-your-api-key"
+```
+
+Windows PowerShell users can persist the setting with `[Environment]::SetEnvironmentVariable("SOMARK_API_KEY", "sk-your-api-key", "User")`; open a new terminal afterwards. On Windows, run the parser with a quoted Windows path, for example `python .\somark_parser.py -f "C:\Users\your-name\Documents\file.pdf" -o ".\output"`. Do not use Unix `export`, `/path/...`, or Bash backslash line continuations in PowerShell or CMD.
 
 Or add it to your agent's settings. The skill will guide you through setup on first use.
 
@@ -82,7 +105,7 @@ The result: your agent gives accurate, context-aware answers instead of hallucin
 |--------------------|-------------|
 | Max file size / 单文件大小 | 200 MB |
 | Max pages / 单文件页数 | 300 页 |
-| QPS per account / 账号 QPS | 1 |
+| QPS per account / 账号 QPS | 4 |
 
 ---
 
