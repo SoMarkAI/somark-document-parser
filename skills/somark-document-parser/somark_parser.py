@@ -26,10 +26,11 @@ api_key = os.environ.get('SOMARK_API_KEY', '')
 
 if not api_key:
     print("错误：请设置环境变量 SOMARK_API_KEY")
-    print("macOS/Linux (Bash/Zsh): export SOMARK_API_KEY=your_key_here")
-    print("Windows PowerShell:     $env:SOMARK_API_KEY = 'your_key_here'")
+    print('macOS/Linux (Bash/Zsh): export SOMARK_API_KEY="your_key_here"')
+    print('Linux (Fish):           set -x SOMARK_API_KEY "your_key_here"')
+    print('Windows PowerShell:     $env:SOMARK_API_KEY = "your_key_here"')
     print("Windows CMD:            set \"SOMARK_API_KEY=your_key_here\"")
-    print("运行示例: python somark_parser.py -f <文件路径> -o <输出目录>")
+    print("运行示例: python somark_parser.py -f <文件路径> [-o <输出目录>]")
     exit(1)
 
 # 确定输入文件
@@ -37,8 +38,9 @@ input_path = args.file or args.dir
 
 if not input_path:
     print("错误：请指定文件或文件夹路径")
-    print("用法: python somark_parser.py -f <文件路径> -o <输出目录>")
-    print("   或: python somark_parser.py -d <文件夹路径> -o <输出目录>")
+    print("用法: python somark_parser.py -f <文件路径> [-o <输出目录>]")
+    print("   或: python somark_parser.py -d <文件夹路径> [-o <输出目录>]")
+    print("说明: -o 为可选参数，默认输出到当前目录")
     exit(1)
 
 input_file_path = Path(input_path).resolve()
