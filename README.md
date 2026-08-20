@@ -21,6 +21,7 @@ Works with Claude Code, Cursor, Cline, OpenCode, and [40+ other agents](https://
 | **somark-document-parser**    | Parse PDFs, Word, PowerPoint, and images into structured Markdown, JSON                                                                                                |
 | **pdf-online**                | Parse a document once with SoMark and publish it as an editable Feishu, DingTalk, or Notion document, spreadsheet, table, or database                                  |
 | **image-parser**              | Core image OCR capability that returns text with precise coordinates (OCR + location awareness)                                                                        |
+| **illustrations-local-storage** | Persist remote SoMark Markdown images as sequentially named local JPEG files with rewritten Markdown references                                                       |
 | **document-diff**             | Compare two documents and generate a structured diff report showing changes, additions, and deletions                                                                  |
 | **contract-reviewer**         | Review contracts for risks, unfair clauses, missing provisions, and key obligations with severity ratings                                                              |
 | **resume-parser**             | Parse resumes and CVs into structured JSON profiles with opinionated candidate assessment                                                                              |

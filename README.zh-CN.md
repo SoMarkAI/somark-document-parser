@@ -21,6 +21,7 @@ npx skills add https://github.com/SoMarkAI/skills
 | **somark-document-parser**    | 将 PDF、Word、PowerPoint、图片解析为结构化 Markdown、JSON 格式                                  |
 | **pdf-online**                | 使用 SoMark 解析一次文档，并发布为可编辑的飞书、钉钉或 Notion 文档、电子表格、数据表或数据库    |
 | **image-parser**              | 图片 OCR 基础能力，输出文本及精确坐标（OCR + 位置感知）                                         |
+| **illustrations-local-storage** | 将 SoMark Markdown 中的远程图片持久化为顺序命名的本地 JPEG，并改写 Markdown 图片引用            |
 | **document-diff**             | 比较两份文档，生成结构化差异报告，标注新增、删除和修改内容                                      |
 | **contract-reviewer**         | 审查合同风险、不平等条款、缺失条款及关键义务，附风险等级评定                                    |
 | **resume-parser**             | 将简历解析为结构化 JSON，并生成有观点的候选人评估报告                                           |
