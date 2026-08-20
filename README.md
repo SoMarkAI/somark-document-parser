@@ -19,6 +19,7 @@ Works with Claude Code, Cursor, Cline, OpenCode, and [40+ other agents](https://
 | Skill                         | Description                                                                                                                                                            |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **somark-document-parser**    | Parse PDFs, Word, PowerPoint, and images into structured Markdown, JSON                                                                                                |
+| **pdf-online**                | Parse a document once with SoMark and publish it as an editable Feishu, DingTalk, or Notion document, spreadsheet, table, or database                                  |
 | **image-parser**              | Core image OCR capability that returns text with precise coordinates (OCR + location awareness)                                                                        |
 | **document-diff**             | Compare two documents and generate a structured diff report showing changes, additions, and deletions                                                                  |
 | **contract-reviewer**         | Review contracts for risks, unfair clauses, missing provisions, and key obligations with severity ratings                                                              |
@@ -46,6 +47,7 @@ The image-parser skill goes further: it returns every text block with its exact 
 **Example triggers:**
 
 - "Parse this PDF for me"
+- "Publish this PDF to Feishu, DingTalk, or Notion as an editable document"
 - "Extract the key clauses from this contract"
 - "Review this contract for risks"
 - "Parse this resume and give me a candidate assessment"
