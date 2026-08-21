@@ -43,6 +43,7 @@ TEXT_KEYS = (
 )
 SUPPORTED_MANIFEST_VERSIONS = {"0.2.0", "0.2.1", "0.2.2"}
 MAX_TABLE_IMAGE_BYTES = 20 * 1024 * 1024
+DOCX_BATCH_UPDATE_SIZE = 20
 
 
 def document_id(value: str) -> str:
@@ -1278,8 +1279,8 @@ def apply_requests(
     table_image_requests = [
         request for request in requests if "insert_table_image" in request
     ]
-    for offset in range(0, len(patch_requests), 200):
-        chunk = patch_requests[offset : offset + 200]
+    for offset in range(0, len(patch_requests), DOCX_BATCH_UPDATE_SIZE):
+        chunk = patch_requests[offset : offset + DOCX_BATCH_UPDATE_SIZE]
         responses.append(
             _run_lark(
                 [

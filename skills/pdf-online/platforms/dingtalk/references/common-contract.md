@@ -36,7 +36,7 @@ Write manifest schema version 1 atomically in the evidence directory. Valid stag
 
 ## Parallel ownership
 
-- Document work owns only `scripts/somark_dingtalk/document/`, `test_dingtalk_document*.py`, and its document route report.
-- Spreadsheet work owns only `scripts/somark_dingtalk/sheet/`, `test_dingtalk_sheet*.py`, and its spreadsheet route report.
-- AI Table work owns only `scripts/somark_dingtalk/aitable/`, `test_dingtalk_aitable*.py`, and its AI Table route report.
-- Route work must not change `SKILL.md`, `agents/openai.yaml`, common modules, packaging, distribution artifacts, project progress files, or the existing Feishu adapter.
+- Document work owns only `scripts/somark_dingtalk/document.py`, `test_dingtalk_document*.py`, and its document route report.
+- Spreadsheet work owns only `scripts/somark_dingtalk/sheet_*.py`, `test_dingtalk_sheet*.py`, and its spreadsheet route report.
+- AI Table work owns only `scripts/somark_dingtalk/aitable_*.py`, `test_dingtalk_aitable*.py`, and its AI Table route report.
+- Route work must not change the root or platform `SKILL.md` instructions, common modules, packaging, distribution artifacts, project progress files, or another platform adapter.

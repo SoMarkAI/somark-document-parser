@@ -23,7 +23,9 @@ Run `scripts/route_input.py` against only the paths explicitly supplied by the u
 
 For PDF, image, Word, or PPT input:
 
-1. Follow the current GitHub official `somark-document-parser` Skill, including its quota notice and confirmation requirement.
+1. The Agent must invoke the separately installed current GitHub official
+   `somark-document-parser` Skill, including its quota notice and confirmation
+   requirement. Notion adapter scripts do not include or discover the parser.
 2. Invoke SoMark at most once in the task and request JSON, Markdown, image URLs, LaTeX formulas, HTML tables, and chemical-structure images.
 3. In page mode, read `notion://docs/enhanced-markdown-spec` once while SoMark is parsing, in parallel when the tool surface permits. Do not defer this independent read until parsing finishes.
 4. Use only the JSON, optional Markdown, and image URLs returned by that invocation. Pass the saved complete JSON response directly to the converter; do not inspect, extract, or rewrite its wrapper first.

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from ..errors import redact_sensitive
+from .errors import redact_sensitive
 
 
 @dataclass(frozen=True)

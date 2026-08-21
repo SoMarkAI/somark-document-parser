@@ -1,7 +1,6 @@
 ---
 name: pdf-online
 description: Parse PDF, image, Word, or PPT files with SoMark and publish the result to Feishu, DingTalk, or Notion as editable documents, spreadsheets, record tables, or databases. Also use when an exact matching SoMark Markdown-and-JSON pair must be imported into one or more of these platforms.
-metadata: { "openclaw": { "emoji": "🌐", "requires": { "env": ["SOMARK_API_KEY"] }, "primaryEnv": "SOMARK_API_KEY" } }
 ---
 
 # PDF Online
@@ -36,12 +35,14 @@ Do not load or mix rules from an unselected platform.
 ## Shared parsing boundary
 
 - Never invoke SoMark more than once for the same source in one task.
-- For a single platform, follow the selected module's input and authorization
-  rules.
-- For multiple platforms from a raw source, obtain one Markdown-and-JSON result
-  through the official `somark-document-parser`, then give that exact pair to
-  every selected adapter as existing results. A retry in one platform must
-  reuse the same pair.
+- For every raw PDF, image, Word, or PPT source, the Agent must invoke the
+  separately installed official `somark-document-parser` Skill and obtain its
+  Markdown-and-JSON result before running a platform adapter. The adapters do
+  not contain the parser and must not search parent or sibling directories for
+  a parser script.
+- For one platform, give that exact pair to the selected adapter. For multiple
+  platforms, invoke the parser Skill once and give the same pair to every
+  selected adapter. A retry in one platform must reuse the same pair.
 - When the user explicitly supplies an exact matching Markdown-and-JSON pair,
   do not invoke SoMark and do not search for replacements or historical
   results.

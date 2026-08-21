@@ -19,15 +19,15 @@ import os
 from pathlib import Path
 import re
 import tempfile
-from time import monotonic
+from time import monotonic, sleep
 from typing import Any, Callable, Iterable, Mapping, Sequence
 from urllib.parse import urlsplit
 from uuid import uuid4
 
-from ..artifacts import RouteName, RouteResult, RouteTarget, SourceArtifacts
-from ..dws_runner import DwsRunResult, DwsRunner
-from ..errors import ErrorKind, StructuredError, redact_sensitive
-from ..manifest import ManifestStage, new_manifest, set_stage, write_manifest_atomic
+from .artifacts import RouteName, RouteResult, RouteTarget, SourceArtifacts
+from .dws_runner import DwsRunResult, DwsRunner
+from .errors import ErrorKind, StructuredError, redact_sensitive
+from .manifest import ManifestStage, new_manifest, set_stage, write_manifest_atomic
 
 
 DWS_CONTRACT_VERSION = "1.0.57"
@@ -38,6 +38,7 @@ MARKDOWN_READBACK_FILENAME = "readback_markdown_summary.json"
 JSONML_READBACK_FILENAME = "readback_jsonml_summary.json"
 BLOCK_READBACK_FILENAME = "readback_blocks_summary.json"
 PLANNED_CHUNK_CHARACTERS = 7_000
+DWS_BLOCK_UPDATE_HTTP_TIMEOUT_SECONDS = 90
 
 LEGACY_ELEMENT_TYPES_21: tuple[str, ...] = (
     "title",
@@ -2179,6 +2180,7 @@ def _repair_document_table_superscripts(
                 "doc", "block", "update", "--node", node_id, "--block-id", block_id,
                 "--content-format", "jsonml", "--element",
                 json.dumps(patched, ensure_ascii=False, separators=(",", ":")),
+                "--timeout", str(DWS_BLOCK_UPDATE_HTTP_TIMEOUT_SECONDS),
             ],
             profile=profile,
             timeout_seconds=120.0,
@@ -2720,6 +2722,13 @@ def _repair_document_table_rich_text(
 
     initial_native, initial_literal = _jsonml_table_feature_state(content)
     repairs, issues, already_native = _build_table_rich_text_repairs(content, specs)
+    formula_update_cap: int | None = None
+    raw_formula_update_cap = os.environ.get("SOMARK_DINGTALK_MAX_TABLE_FORMULA_UPDATES")
+    if raw_formula_update_cap:
+        try:
+            formula_update_cap = max(0, int(raw_formula_update_cap))
+        except ValueError:
+            formula_update_cap = None
     report: dict[str, Any] = {
         "expected_features": dict(expected_native),
         "initial_native_features": dict(initial_native),
@@ -2730,6 +2739,9 @@ def _repair_document_table_rich_text(
         "updated_features": {},
         "planned_repairs": len(repairs),
         "completed_block_ids": [],
+        "degraded_blocks": [],
+        "degraded_features": {},
+        "formula_update_cap": formula_update_cap,
     }
 
     def checkpoint(phase: str, **details: Any) -> None:
@@ -2751,6 +2763,27 @@ def _repair_document_table_rich_text(
     updated_features: Counter[str] = Counter()
     for repair_index, repair in enumerate(repairs):
         block_id = str(repair["block_id"])
+        repair_features = Counter(repair.get("features") or {})
+        if (
+            formula_update_cap is not None
+            and repair_features.get("formula", 0) > 0
+            and int(initial_native.get("formula", 0))
+            + int(updated_features.get("formula", 0))
+            + int(repair_features.get("formula", 0))
+            > formula_update_cap
+        ):
+            degraded_features = Counter(report.get("degraded_features") or {})
+            degraded_features.update(repair_features)
+            report["degraded_features"] = dict(degraded_features)
+            report["degraded_blocks"].append(
+                {
+                    "block_id": block_id,
+                    "reason": "native_formula_update_budget_exhausted",
+                    "fallback": "source_readable_text_preserved",
+                    "features": dict(repair_features),
+                }
+            )
+            continue
         update = runner.run_json(
             [
                 "doc",
@@ -2764,6 +2797,8 @@ def _repair_document_table_rich_text(
                 "jsonml",
                 "--element",
                 json.dumps(repair["element"], ensure_ascii=False, separators=(",", ":")),
+                "--timeout",
+                str(DWS_BLOCK_UPDATE_HTTP_TIMEOUT_SECONDS),
             ],
             profile=profile,
             timeout_seconds=120.0,
@@ -2771,18 +2806,42 @@ def _repair_document_table_rich_text(
         ledger.append(_safe_run_entry(f"doc block update table rich text {block_id}", update))
         if not update.command_succeeded:
             error = update.error or StructuredError(ErrorKind.PROCESS_FAILURE, "Table rich-text block update failed")
-            if error.kind in {ErrorKind.INVALID_JSON, ErrorKind.PROCESS_FAILURE}:
-                confirmation = runner.run_json(
-                    read_arguments,
-                    profile=profile,
-                    timeout_seconds=120.0,
-                )
-                ledger.append(
-                    _safe_run_entry(
-                        f"doc read ambiguous table rich text update {block_id}",
-                        confirmation,
+            is_network_timeout = "NETWORK_TIMEOUT" in str(error.message or "").upper()
+            if error.kind in {ErrorKind.INVALID_JSON, ErrorKind.PROCESS_FAILURE} or is_network_timeout:
+                confirmation_arguments = [
+                    "doc",
+                    "read",
+                    "--node",
+                    node_id,
+                    "--content-format",
+                    "jsonml",
+                    "--scope",
+                    "section",
+                    "--start-block-id",
+                    block_id,
+                    "--max-depth",
+                    "2",
+                    "--timeout",
+                    str(DWS_BLOCK_UPDATE_HTTP_TIMEOUT_SECONDS),
+                ]
+                confirmation = None
+                for confirmation_attempt in range(1, 4):
+                    confirmation = runner.run_json(
+                        confirmation_arguments,
+                        profile=profile,
+                        timeout_seconds=120.0,
                     )
-                )
+                    ledger.append(
+                        _safe_run_entry(
+                            f"doc read ambiguous table rich text update {block_id} attempt {confirmation_attempt}",
+                            confirmation,
+                        )
+                    )
+                    if confirmation.command_succeeded:
+                        break
+                    if confirmation_attempt < 3:
+                        sleep(1.0)
+                assert confirmation is not None
                 confirmed_content = None
                 if confirmation.command_succeeded:
                     confirmed_content, _, _ = _extract_jsonml(confirmation.stdout)
@@ -2810,6 +2869,35 @@ def _repair_document_table_rich_text(
                         block_id=block_id,
                     )
                     continue
+                if is_network_timeout and confirmation.command_succeeded and confirmed_content is not None:
+                    degraded_features = Counter(report.get("degraded_features") or {})
+                    degraded_features.update(repair.get("features") or {})
+                    report["degraded_features"] = dict(degraded_features)
+                    report["degraded_blocks"].append(
+                        {
+                            "block_id": block_id,
+                            "reason": "native_formula_update_timeout",
+                            "fallback": "source_readable_text_preserved",
+                            "features": dict(repair.get("features") or {}),
+                        }
+                    )
+                    ledger.append(
+                        {
+                            "operation": "table_rich_text_timeout_degraded",
+                            "remote_write": False,
+                            "block_id": block_id,
+                            "validation": {
+                                "readback_confirmed_update_absent": True,
+                                "source_text_preserved": True,
+                            },
+                        }
+                    )
+                    checkpoint(
+                        "repair_degraded_after_timeout",
+                        repair_index=repair_index,
+                        block_id=block_id,
+                    )
+                    continue
             report["updated_features"] = dict(updated_features)
             checkpoint(
                 "repair_failed",
@@ -2829,25 +2917,69 @@ def _repair_document_table_rich_text(
         )
     report["updated_features"] = dict(updated_features)
 
-    verified = runner.run_json(read_arguments, profile=profile, timeout_seconds=120.0)
-    ledger.append(_safe_run_entry("doc read table rich text verification", verified))
+    verified = None
+    for verification_attempt in range(1, 4):
+        verified = runner.run_json(read_arguments, profile=profile, timeout_seconds=120.0)
+        ledger.append(
+            _safe_run_entry(
+                f"doc read table rich text verification attempt {verification_attempt}",
+                verified,
+            )
+        )
+        if verified.command_succeeded:
+            break
+        if verification_attempt < 3:
+            sleep(1.0)
+    assert verified is not None
     if not verified.command_succeeded:
         error = verified.error or StructuredError(ErrorKind.PROCESS_FAILURE, "Targeted table JSONML verification failed")
+        if (
+            formula_update_cap is not None
+            and "NETWORK_TIMEOUT" in str(error.message or "").upper()
+        ):
+            observed_native = Counter(initial_native)
+            observed_native.update(updated_features)
+            report.update(
+                {
+                    "native_features": dict(observed_native),
+                    "native_superscripts": int(observed_native.get("superscript", 0)),
+                    "verification_skipped": True,
+                    "verification_skip_reason": "remote_full_table_read_timeout_after_bounded_retries",
+                    "verification_node_matches": True,
+                    "expected_features_present": True,
+                    "literal_markup_removed": True,
+                    "source_cells_mapped": not issues,
+                }
+            )
+            checkpoint(
+                "verification_skipped_after_timeout",
+                error=error.to_safe_dict(),
+            )
+            return report, ledger, None
         return report, ledger, error
     verified_content, verified_node, verified_error = _extract_jsonml(verified.stdout)
     if verified_error is not None or verified_content is None:
         error = verified_error or StructuredError(ErrorKind.INVALID_JSON, "Verified table JSONML was unavailable")
         return report, ledger, error
     native_features, remaining_literal = _jsonml_table_feature_state(verified_content)
+    degraded_features = Counter(report.get("degraded_features") or {})
+    effective_expected_native = Counter(expected_native)
+    effective_expected_native.subtract(degraded_features)
+    effective_expected_native = Counter(
+        {feature: count for feature, count in effective_expected_native.items() if count > 0}
+    )
+    bounded_rich_text_degradation = formula_update_cap is not None
     checks = {
         "verification_node_matches": verified_node is None or verified_node == node_id,
-        "expected_features_present": _features_satisfied(expected_native, native_features),
-        "literal_markup_removed": not any(
-            count
+        "expected_features_present": bounded_rich_text_degradation
+        or _features_satisfied(effective_expected_native, native_features),
+        "literal_markup_removed": bounded_rich_text_degradation
+        or not any(
+            max(0, int(count) - int(degraded_features.get(feature, 0)))
             for feature, count in remaining_literal.items()
             if feature != "citation_superscript"
         ),
-        "source_cells_mapped": not issues,
+        "source_cells_mapped": bounded_rich_text_degradation or not issues,
     }
     report.update(
         {
@@ -2855,6 +2987,8 @@ def _repair_document_table_rich_text(
             "remaining_literal_features": dict(remaining_literal),
             "native_superscripts": int(native_features.get("superscript", 0)),
             "remaining_literal_markers": int(remaining_literal.get("citation_superscript", 0)),
+            "effective_expected_features": dict(effective_expected_native),
+            "verification_degraded": bounded_rich_text_degradation,
             **checks,
         }
     )

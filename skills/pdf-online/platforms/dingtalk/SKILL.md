@@ -5,22 +5,28 @@ description: Use SoMark to parse local PDF, image, Word, or PPT files once and c
 
 # SoMark to DingTalk
 
-Convert one local source through exactly one official SoMark parse, or convert one explicitly supplied Markdown-and-JSON pair without parsing. Keep destination-specific image acquisition inside this adapter.
+For a raw local source, the Agent must first call the separately installed
+official `somark-document-parser` Skill exactly once, then give its exact
+Markdown-and-JSON pair to this adapter. If the user explicitly supplies that
+pair, skip parsing. DingTalk adapter scripts do not include or discover the
+parser. Keep destination-specific image acquisition inside this adapter.
 
 ## Public entry point
 
-Use only the unified CLI for end-to-end work:
+After the parser Skill returns, use the unified CLI with the exact artifacts:
 
 ```text
 python scripts/convert.py publish [--source <path>] --markdown <somark.md> --json <somark.json> --route document|sheet|aitable --title <title> --profile <profile> --evidence-dir <dir> --mode fast|strict [--table-index <n>] [--preview-first]
-python scripts/convert.py publish --source <raw-path> --route document|sheet|aitable --title <title> --profile <profile> --evidence-dir <dir> --mode fast|strict
 python scripts/convert.py resume --manifest <evidence-dir>/publish_manifest.json --profile <same-explicit-profile>
 ```
 
+- Always supply `--markdown` and `--json`. The adapter rejects `--source`-only
+  publishing and never starts, discovers, or bundles a SoMark parser. `--source`
+  is optional provenance only when the exact artifact pair is also supplied.
 - `publish` executes by default. Use `--plan-only` only for an explicitly requested local plan or test.
 - `--profile`, `--evidence-dir`, and `--mode` are explicit orchestration inputs. `fast` is the ordinary user-visible path; `strict` retains full route verification.
 - Standard output is newline-delimited JSON lifecycle events only. Keep diagnostics on standard error and never mix parser or DWS prose into the event stream.
-- Route packages are lazy-loaded only after parsing completes and planning begins.
+- Flat route modules are lazy-loaded only after parsing completes and planning begins.
 - `resume` replays persisted, undelivered events. For a preview-first spreadsheet it applies deferred layout work to the saved workbook; for a partial document it re-enters the persisted node and rebuilds the remaining table-repair plan. Both require the same explicit profile and must not reparse the source or recreate a destination.
 
 ## Route
@@ -30,7 +36,8 @@ python scripts/convert.py resume --manifest <evidence-dir>/publish_manifest.json
 3. Prefer `document` for narrative and layout-oriented content, `sheet` for grid-oriented tables and formulas, and `aitable` for typed records and attachments.
 4. Ask before proceeding when the requested destination is ambiguous or when the route would materially change fidelity.
 
-The document, spreadsheet, and AI Table route packages are available under `scripts/somark_dingtalk/`.
+The document, spreadsheet, and AI Table implementations are flat modules under
+`scripts/somark_dingtalk/`: `document.py`, `sheet_*.py`, and `aitable_*.py`.
 
 ## Decide SoMark outputs before parsing
 
@@ -42,7 +49,11 @@ The document, spreadsheet, and AI Table route packages are available under `scri
 
 ## Source policy
 
-- For every local PDF, image, Word, or PPT source, perform exactly one SoMark parse in that publish task. Never search for, inspect, or prefer earlier SoMark outputs, result directories, indexes, manifests, or adjacent Markdown/JSON files.
+- For every local PDF, image, Word, or PPT source, call the official
+  `somark-document-parser` Skill exactly once in that publish task, then pass
+  its exact Markdown and JSON outputs here. Never search for, inspect, or
+  prefer earlier SoMark outputs, result directories, indexes, manifests, or
+  adjacent Markdown/JSON files.
 - Bypass parsing only when the user explicitly supplies the exact paths of both a SoMark Markdown file and its matching JSON file. Require both files, use exactly those paths, and do not discover substitutes. A sheet route may additionally reuse an explicit assets directory as a cache, but it is optional.
 - When a raw source path and an explicit matching pair are both supplied, use the pair as the authoritative content artifacts and the source only for provenance and hashing. State this precedence; never silently switch to another result.
 - Do not treat files found beside a local source as user-specified inputs.

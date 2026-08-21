@@ -15,7 +15,7 @@ from typing import Any
 
 SUPPORTED_TYPES = {
     "title", "text", "choice", "table", "figure", "stamp", "code", "equation", "cs",
-    "figure_caption", "table_caption", "blank", "reference", "footnote",
+    "figure_caption", "table_caption", "blank", "reference", "footnote", "cate",
 }
 FILTERED_TYPES = {"header", "footer", "sidebar", "sider"}
 NFM_SPECIALS = frozenset("\\*~`$[]<>{}|^")
@@ -638,6 +638,7 @@ def convert(
     sections: list[str] = []
     mappings: list[dict[str, Any]] = []
     output_order = 1
+    native_toc_emitted = False
 
     if single_title_block:
         mappings.append(
@@ -742,6 +743,24 @@ def convert(
             )
             sections.append(converted_text)
             target_types = ["paragraph"]
+        elif source_type == "cate":
+            if native_toc_emitted:
+                mappings.append(
+                    {
+                        "order": None,
+                        "output_order": None,
+                        "source_page_num": block["_source_page_num"],
+                        "source_idx": block["idx"],
+                        "source_type": source_type,
+                        "target_type": "filtered",
+                        "degraded": False,
+                        "filter_reason": "continued_source_toc_covered_by_native_toc",
+                    }
+                )
+                continue
+            sections.append("<table_of_contents/>")
+            target_types = ["table_of_contents"]
+            native_toc_emitted = True
         elif source_type == "footnote":
             footnote_group = footnote_groups[identity]
             content = footnote_group["content"]
