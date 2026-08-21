@@ -22,6 +22,7 @@ Works with Claude Code, Cursor, Cline, OpenCode, and [40+ other agents](https://
 | **pdf-online**                | Parse a document once with SoMark and publish it as an editable Feishu, DingTalk, or Notion document, spreadsheet, table, or database                                  |
 | **image-parser**              | Core image OCR capability that returns text with precise coordinates (OCR + location awareness)                                                                        |
 | **illustrations-local-storage** | Persist remote SoMark Markdown images as sequentially named local JPEG files with rewritten Markdown references                                                       |
+| **get-catalog-tree**          | Extract a document's heading hierarchy as a reusable nested catalog JSON, preserving page and source-block references                                                  |
 | **document-diff**             | Compare two documents and generate a structured diff report showing changes, additions, and deletions                                                                  |
 | **contract-reviewer**         | Review contracts for risks, unfair clauses, missing provisions, and key obligations with severity ratings                                                              |
 | **resume-parser**             | Parse resumes and CVs into structured JSON profiles with opinionated candidate assessment                                                                              |
@@ -57,6 +58,8 @@ The image-parser skill goes further: it returns every text block with its exact 
 - "What changed between these two documents?"
 - "Analyze this tender document — what are the qualification requirements?"
 - "Convert this document to Markdown"
+- "Extract the catalog tree from this document"
+- "Turn this SoMark JSON into a nested document outline"
 - "What does this image say?"
 - "Extract all text with bounding boxes from this image"
 - "Find the invoice amount and its position on the page"
