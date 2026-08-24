@@ -13,8 +13,10 @@ content through a cloud document.
 ## Workflow
 
 1. Resolve the source:
-   - For a raw PDF, image, Word, or PPT file, invoke `somark-document-parser`
-     exactly once in the task and request both Markdown and JSON.
+   - For a raw PDF, image, Word, or PPT file, the Agent must invoke the
+     separately installed official `somark-document-parser` Skill exactly once
+     in the task and request both Markdown and JSON. Feishu adapter scripts do
+     not include or discover the parser.
    - Bypass parsing only when the user explicitly supplies the exact matching
      Markdown and JSON paths. Never discover or reuse adjacent, historical,
      same-name, hashed, indexed, or recently modified results.

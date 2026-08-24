@@ -33,7 +33,9 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="convert.py")
     commands = parser.add_subparsers(dest="command", required=True)
 
-    publish_parser = commands.add_parser("publish", help="parse, plan, and run one DingTalk route")
+    publish_parser = commands.add_parser(
+        "publish", help="plan and run one DingTalk route from explicit SoMark artifacts"
+    )
     publish_parser.add_argument("--source")
     publish_parser.add_argument("--route", required=True, choices=("document", "sheet", "aitable"))
     publish_parser.add_argument("--title", required=True)
@@ -43,7 +45,6 @@ def _parser() -> argparse.ArgumentParser:
     publish_parser.add_argument("--markdown", dest="markdown_path")
     publish_parser.add_argument("--json", dest="json_path")
     publish_parser.add_argument("--assets", dest="assets_dir")
-    publish_parser.add_argument("--parser-cli")
     publish_parser.add_argument("--timezone", default="Asia/Shanghai")
     publish_parser.add_argument(
         "--table-index",
@@ -53,7 +54,7 @@ def _parser() -> argparse.ArgumentParser:
     publish_parser.add_argument(
         "--plan-only",
         action="store_true",
-        help="run parsing and local planning without creating a DingTalk target",
+        help="run local planning from explicit artifacts without creating a DingTalk target",
     )
     publish_parser.add_argument(
         "--preview-first",
@@ -112,7 +113,6 @@ def main(argv: list[str] | None = None) -> int:
                 markdown_path=args.markdown_path,
                 json_path=args.json_path,
                 assets_dir=args.assets_dir,
-                parser_cli=args.parser_cli,
                 timezone=args.timezone,
                 table_index=args.table_index,
                 preview_first=args.preview_first,

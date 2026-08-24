@@ -1,13 +1,11 @@
-"""One public lifecycle for SoMark parsing and DingTalk route execution."""
+"""One public lifecycle for explicit SoMark artifacts and DingTalk route execution."""
 
 from __future__ import annotations
 
 from hashlib import sha256
 import importlib
 import json
-import os
 from pathlib import Path
-import subprocess
 import sys
 from time import monotonic
 from typing import Any, Callable, Mapping, Sequence
@@ -20,25 +18,7 @@ from .manifest import ManifestStage, new_manifest, read_manifest, set_stage, wri
 
 PUBLISH_MANIFEST_FILENAME = "publish_manifest.json"
 PUBLISH_SCHEMA_VERSION = 1
-SUPPORTED_LOCAL_SUFFIXES = {
-    ".pdf",
-    ".png",
-    ".jpg",
-    ".jpeg",
-    ".bmp",
-    ".tiff",
-    ".tif",
-    ".webp",
-    ".heic",
-    ".heif",
-    ".doc",
-    ".docx",
-    ".ppt",
-    ".pptx",
-}
-
 EventSink = Callable[[Mapping[str, Any]], None]
-ParserRunner = Callable[..., subprocess.CompletedProcess[str]]
 
 
 class PublishError(RuntimeError):
@@ -144,33 +124,6 @@ class _EventJournal:
         return delivered
 
 
-def _parser_cli(explicit: str | Path | None) -> Path:
-    candidates: list[Path] = []
-    if explicit is not None:
-        candidates.append(Path(explicit).expanduser())
-    configured = os.environ.get("SOMARK_DOCUMENT_PARSER_CLI")
-    if configured:
-        candidates.append(Path(configured).expanduser())
-    candidates.extend(
-        [
-            Path.home() / ".codex" / "skills" / "somark-document-parser" / "somark_parser.py",
-            Path(__file__).resolve().parents[3] / "somark-document-parser" / "somark_parser.py",
-        ]
-    )
-    for candidate in candidates:
-        resolved = candidate.resolve()
-        if resolved.is_file():
-            return resolved
-    raise FileNotFoundError(
-        "somark-document-parser CLI was not found; pass --parser-cli or set "
-        "SOMARK_DOCUMENT_PARSER_CLI"
-    )
-
-
-def _run_parser(command: Sequence[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(list(command), **kwargs)
-
-
 def _explicit_artifacts(
     route: RouteName,
     source: Path | None,
@@ -195,40 +148,6 @@ def _explicit_artifacts(
     )
 
 
-def _artifacts_from_index(
-    route: RouteName,
-    source: Path,
-    index_path: Path,
-) -> tuple[SourceArtifacts, int, float]:
-    value = json.loads(index_path.read_text(encoding="utf-8"))
-    results = value.get("results") if isinstance(value, Mapping) else None
-    if not isinstance(results, list) or len(results) != 1 or not isinstance(results[0], Mapping):
-        raise PublishError("results_index.json must contain exactly one file result")
-    item = results[0]
-    parse_calls = item.get("parse_calls")
-    if item.get("status") != "success":
-        raise PublishError(f"SoMark parse failed: {item.get('error') or 'unknown parser error'}")
-    if parse_calls != 1:
-        raise PublishError(f"one local source task must use exactly one SoMark call; observed {parse_calls!r}")
-    markdown = _existing_file(item.get("markdown"), "SoMark Markdown artifact")
-    structured = _existing_file(item.get("json"), "SoMark JSON artifact")
-    if markdown is None or structured is None:
-        raise PublishError("SoMark did not return both Markdown and JSON artifacts")
-    assets = _existing_dir(item.get("zip_dir"), "SoMark asset directory")
-    evidence_files = [str(index_path), str(markdown), str(structured)]
-    if assets is not None:
-        evidence_files.append(str(assets))
-    artifacts = SourceArtifacts(
-        source_path=str(source),
-        source_hash=_hash_file(source),
-        markdown_path=str(markdown),
-        json_path=str(structured),
-        assets_dir=str(assets) if assets is not None else None,
-        evidence_files=tuple(evidence_files),
-    )
-    return artifacts, 1, float(item.get("elapsed_seconds") or 0.0)
-
-
 def _prepare_artifacts(
     *,
     route: RouteName,
@@ -236,9 +155,6 @@ def _prepare_artifacts(
     markdown_path: str | Path | None,
     json_path: str | Path | None,
     assets_dir: str | Path | None,
-    evidence_dir: Path,
-    parser_cli: str | Path | None,
-    parser_runner: ParserRunner | None,
 ) -> tuple[SourceArtifacts, int, float, str | None]:
     markdown = _existing_file(markdown_path, "explicit Markdown artifact")
     structured = _existing_file(json_path, "explicit JSON artifact")
@@ -247,40 +163,19 @@ def _prepare_artifacts(
         raise ValueError("explicit artifact mode requires both --markdown and --json")
     if markdown is not None and structured is not None:
         return _explicit_artifacts(route, source, markdown, structured, assets), 0, 0.0, None
-
-    if source is None:
-        raise ValueError("publish requires a local --source or an explicit Markdown/JSON pair")
-    if source.suffix.casefold() not in SUPPORTED_LOCAL_SUFFIXES:
-        raise ValueError(f"unsupported local source type for SoMark parsing: {source.suffix or '<none>'}")
-    parser = _parser_cli(parser_cli)
-    output_dir = evidence_dir / "parsed"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    command = [sys.executable, str(parser), "-f", str(source), "-o", str(output_dir)]
-    active_runner = parser_runner or _run_parser
-    completed = active_runner(
-        command,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        shell=False,
-        check=False,
+    raise ValueError(
+        "DingTalk publishing requires the exact Markdown and JSON artifacts from the "
+        "official somark-document-parser Skill; source-only publishing is not supported"
     )
-    index_path = output_dir / "results_index.json"
-    if not index_path.is_file():
-        raise PublishError(
-            f"somark-document-parser did not produce results_index.json (exit={completed.returncode})"
-        )
-    artifacts, calls, elapsed = _artifacts_from_index(route, source, index_path)
-    if completed.returncode != 0:
-        raise PublishError(
-            f"somark-document-parser exited with {completed.returncode} despite writing an index"
-        )
-    return artifacts, calls, elapsed, str(index_path)
 
 
 def _route_module(route: RouteName) -> Any:
-    return importlib.import_module(f"somark_dingtalk.{route.value}")
+    module_names = {
+        RouteName.DOCUMENT: "somark_dingtalk.document",
+        RouteName.SHEET: "somark_dingtalk.sheet_route",
+        RouteName.AITABLE: "somark_dingtalk.aitable_executor",
+    }
+    return importlib.import_module(module_names[route])
 
 
 def _business_call_count(value: Any) -> int:
@@ -373,15 +268,13 @@ def publish(
     markdown_path: str | Path | None = None,
     json_path: str | Path | None = None,
     assets_dir: str | Path | None = None,
-    parser_cli: str | Path | None = None,
-    parser_runner: ParserRunner | None = None,
     dws_runner: DwsRunner | None = None,
     event_sink: EventSink | None = None,
     timezone: str = "Asia/Shanghai",
     table_index: int | None = None,
     preview_first: bool = False,
 ) -> RouteResult:
-    """Parse at most once, lazily load one route, and emit a stable event lifecycle."""
+    """Consume one explicit artifact pair, lazily load one route, and emit a stable lifecycle."""
 
     route_name = route if isinstance(route, RouteName) else RouteName(str(route))
     if mode not in {"fast", "strict"}:
@@ -441,9 +334,6 @@ def publish(
             markdown_path=str(explicit_md) if explicit_md is not None else None,
             json_path=str(explicit_json) if explicit_json is not None else None,
             assets_dir=assets_dir,
-            evidence_dir=evidence,
-            parser_cli=parser_cli,
-            parser_runner=parser_runner,
         )
     except Exception as exc:
         error = StructuredError(

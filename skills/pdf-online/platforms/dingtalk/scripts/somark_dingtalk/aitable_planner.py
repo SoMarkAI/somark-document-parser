@@ -16,10 +16,10 @@ import tempfile
 from typing import Any, Iterable, Mapping
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from ..artifacts import RouteName, RouteTarget, SourceArtifacts
-from ..errors import redact_sensitive
-from ..manifest import ManifestStage, new_manifest, write_manifest_atomic
-from .models import AitableAttachmentPlan, AitableFieldPlan, AitablePlan
+from .artifacts import RouteName, RouteTarget, SourceArtifacts
+from .errors import redact_sensitive
+from .manifest import ManifestStage, new_manifest, write_manifest_atomic
+from .aitable_models import AitableAttachmentPlan, AitableFieldPlan, AitablePlan
 
 
 DWS_CONTRACT_VERSION = "1.0.57"
